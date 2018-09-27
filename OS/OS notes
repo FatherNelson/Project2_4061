@@ -41,3 +41,15 @@ void main(){
 ssize_t write(int filedes, const char* buffer, size_t n);
 Returns number of bytes written. If this is <n, this is a problem
 
+
+Re-direction: another key CS concept!
+What is the default I/O location?
+	The terminal
+
+cat foo.bar > baz = Put the bytes from this file into here
+
+#include <uintstd.h>
+int dup2 (int fd1, int fd2);
+#fd1 must already be open
+This function forces fd2 to point at what fd1 points to.
+

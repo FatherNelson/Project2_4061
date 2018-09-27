@@ -221,20 +221,21 @@ int main(int argc, char *argv[])
 //  	show_targets(targets, nTargetCount);
 //  	TODO: Unsafe way of checking the default, must be improved
   	if(targetSet){
-//  		printf("%s \n", TargetName);
+  		printf("Target was set: %s \n \n", TargetName);
 //  		Check for where it is in the build file, if the target is not in the build file, complain
 		for(int i = 0; i < nTargetCount; i++){
-			printf("%s \n",targets[i].TargetName);
-			printf("%s \n", TargetName);
+//			printf("%s \n",targets[i].TargetName);
+//			printf("%s \n", TargetName);
+//			printf("\n");
 //			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
 
-			//parameter
-			if(targets[i].TargetName == TargetName){
+			//If the target to start at matches this target, check the dependencies here
+			if(strcmp(targets[i].TargetName, TargetName) == 0){
 				printf("Found it in the array at position %d \n", i);
 				check_dependency_list(targets,i);
 			}
 			/* If there is a problem with the target name, we will display an error*/
-			else if(targets[i].TargetName != TargetName && i == nTargetCount){
+			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount){
 				show_targets_error(TargetName);
 				break;
 			}
