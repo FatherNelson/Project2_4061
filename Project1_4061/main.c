@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
   //Phase1: Warmup-----------------------------------------------------------------------------------------------------
   //Parse the structure elements and print them as mentioned in the Project Writeup
   /* Comment out the following line before Phase2 */
-  show_targets(targets, nTargetCount);
+//  show_targets(targets, nTargetCount);
   //End of Warmup------------------------------------------------------------------------------------------------------
 
   /*
@@ -129,11 +129,10 @@ int main(int argc, char *argv[])
    */
   if(argc == 1) {
       strcpy(TargetName, argv[optind]);    // here we have the given target, this acts as a method to begin the building
-//      printf("Got here");
   }
-  else
-  	strcpy(TargetName, targets[0].TargetName);  // default part is the first target
-
+  else {
+	  strcpy(TargetName, targets[0].TargetName);// default part is the first target
+  }
   /*
    * Now, the file has been parsed and the targets have been named.
    * You'll now want to check all dependencies (whether they are
@@ -145,8 +144,51 @@ int main(int argc, char *argv[])
 	
   //Phase2: Begins ----------------------------------------------------------------------------------------------------
   /*Your code begins here*/
-  
-  
+
+  /** If a build file is provided**/
+  if(argc == 1){
+
+  }
+
+  /** If not **/
+  else{
+  	//Should be to nTargetCount in the final version
+  	for(int i = 0; i < 1; i++){
+//  		printf("My user ID is: %5ld\n", (long)getuid());
+  		printf("Start of target %d \n",i);
+	    printf("%s \n", targets[i].TargetName);
+	    printf("Name of target is above here \n");
+//	    We are told we will have at most ten dependencies, so hard code for now
+		for(int j =0; j < 10; j++) {
+			//Causes us to execute once we find a node that has a blank dependency list
+			if(strlen(targets[i].DependencyNames[j]) < 1){
+				printf("%s\n", targets[i].Command);
+				char* x = targets[i].Command;
+				pid_t childpid;
+				childpid = fork();
+				if(childpid == -1){
+					printf("I failed to fork");
+					return 1;
+				}
+				if(childpid == 0){
+					printf("I am the child %ld \n", (long)getpid());
+					printf("Put an execution here \n");
+				}
+				else{
+					printf("I am the parent %ld \n", (long)getpid());
+				}
+//				printf("I am process %ld and my x is %s \n", (long)getpid(), x);
+				break;
+			}
+//			In the case there are more to the dependency list, change the node we are looking at
+			else {
+				printf("%s \n", targets[i].DependencyNames[j]);
+
+			}
+		}
+	    printf("End of target %d \n",i);
+  	}
+  }
   
   
   /*End of your code*/
