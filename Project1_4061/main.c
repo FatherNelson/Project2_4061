@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
   //Phase1: Warmup-----------------------------------------------------------------------------------------------------
   //Parse the structure elements and print them as mentioned in the Project Writeup
   /* Comment out the following line before Phase2 */
-//  show_targets(targets, nTargetCount);
+  show_targets(targets, nTargetCount);
   //End of Warmup------------------------------------------------------------------------------------------------------
 
   /*
@@ -203,37 +203,37 @@ int main(int argc, char *argv[])
   else{
 //  	show_targets(targets, nTargetCount);
 //  	TODO: Unsafe way of checking the default, must be improved
-  	if(targetSet){
-//  		printf("%s \n", TargetName);
-//  		Check for where it is in the build file, if the target is not in the build file, complain
-		for(int i = 0; i < nTargetCount; i++){
-			printf("%s \n",targets[i].TargetName);
-			printf("%s \n", TargetName);
-//			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
-
-			//parameter
-			if(targets[i].TargetName == TargetName){
-				printf("Found it in the array at position %d \n", i);
-				check_dependency_list(targets,i);
-			}
-			/* If there is a problem with the target name, we will display an error*/
-			else if(targets[i].TargetName != TargetName && i == nTargetCount){
-				show_targets_error(TargetName);
-				break;
-			}
-		}
-  	}
-  	else {
+//  	if(targetSet){
+////  		printf("%s \n", TargetName);
+////  		Check for where it is in the build file, if the target is not in the build file, complain
+//		for(int i = 0; i < nTargetCount; i++){
+//			printf("%s \n",targets[i].TargetName);
+//			printf("%s \n", TargetName);
+////			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
+//
+//			//parameter
+//			if(targets[i].TargetName == TargetName){
+//				printf("Found it in the array at position %d \n", i);
+//				check_dependency_list(targets,i);
+//			}
+//			/* If there is a problem with the target name, we will display an error*/
+//			else if(targets[i].TargetName != TargetName && i == nTargetCount){
+//				show_targets_error(TargetName);
+//				break;
+//			}
+//		}
+//  	}
+//  	else {
 	    //Should be to nTargetCount in the final version, it is set to one for testing
-	    for (int i = 0; i < 1; i++) {
-		    printf("Start of target %d \n", i);
-		    printf("%s \n", targets[i].TargetName);
-		    printf("Name of target is above here \n");
+//	    for (int i = 0; i < 1; i++) {
+//		    printf("Start of target %d \n", i);
+//		    printf("%s \n", targets[i].TargetName);
+//		    printf("Name of target is above here \n");
 //	    We are told we will have at most ten dependencies, so hard code for now
-			check_dependency_list(targets, i);
-	    }
+//			check_dependency_list(targets, i);
+//	    }
     }
-  }
+//  }
   
   
   /*End of your code*/

@@ -35,3 +35,9 @@ void main(){
 	fd = open("somefile", O_RDONLY);
 	printf("Size = %d \n", total);
 }
+
+//Writing
+
+ssize_t write(int filedes, const char* buffer, size_t n);
+Returns number of bytes written. If this is <n, this is a problem
+
