@@ -36,6 +36,48 @@ void show_error_message(char * ExecName)
 }
 
 //Write your functions here
+void show_targets_error(char* ExecName){
+	fprintf(stderr, "Target %s does not exist. Please enter a valid build target \n", ExecName);
+	exit(0);
+}
+
+//A function to check the dependency list of any node given the list of targets and where the current node being checked
+// is in the graph
+int check_dependency_list(target_t targets[], int array_pos){
+	//	    We are told we will have at most ten dependencies, so hard code for now
+	for (int j = 0; j < 10; j++) {
+		printf("%d", array_pos);
+		//Indicates that we are at the end of the dependency list
+		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
+			//TODO: Figure out if this is an unsafe way to check the end of the array
+//				printf("%s\n", targets[i].Command);
+			char *x = targets[array_pos].Command;
+			pid_t childpid;
+			childpid = fork();
+			if (childpid == -1) {
+				printf("I failed to fork");
+				return 1;
+			}
+			if (childpid == 0) {
+//				Make this statement true
+				printf("I am the child that will run my command since my parent has"
+				       " no dependencies %ld \n", (long) getpid());
+				printf("Execute: %s \n", x);
+				return 1; // MUST return from teh child process
+			}
+			else {
+				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
+			}
+//				printf("I am process %ld and my x is %s \n", (long)getpid(), x);
+			break;
+		}
+//			In the case there are more to the dependency list, change the node we are looking at
+		else {
+			printf("%s \n", targets[array_pos].DependencyNames[j]);
+//				TODO: We need to branch here to running ./make4061 specificTarget
+		}
+	}
+}
 
 //Phase1: Warmup phase for parsing the structure here. Do it as per the PDF (Writeup)
 void show_targets(target_t targets[], int nTargetCount)
@@ -79,8 +121,9 @@ int main(int argc, char *argv[])
   char *format = "f:h";
   char *temp;
 
-  /* Checks if a file was set, 1 if true, 0 if false */
+  /* Checks if a file/target was set, 1 if true, 0 if false */
   int fileSet = 0;
+  int targetSet = 0;
 
   //Getopt function is used to access the command line arguments. However there can be arguments which may or may not need the parameters after the command
   //Example -f <filename> needs a finename, and therefore we need to give a colon after that sort of argument
@@ -134,6 +177,7 @@ int main(int argc, char *argv[])
   if(argc == 1) {
 //  	    TODO: Fix this area potentially, we are getting a failure when the target is listed before the -f flag
       strcpy(TargetName, argv[optind]);    // here we have the given target, this acts as a method to begin the building
+      targetSet = 1;
   }
   else {
 	  strcpy(TargetName, targets[0].TargetName);// default part is the first target
@@ -157,45 +201,33 @@ int main(int argc, char *argv[])
 
   /** If no build file is provided **/
   else{
+//  	show_targets(targets, nTargetCount);
 //  	TODO: Unsafe way of checking the default, must be improved
-  	if(TargetName != 'make4061'){
-  		printf("%s", TargetName);
+  	if(targetSet){
+//  		printf("%s \n", TargetName);
+//  		Check for where it is in the build file, if the target is not in the build file, complain
+		for(int i = 0; i < nTargetCount; i++){
+			printf("%s \n",targets[i].TargetName);
+			printf("%s \n", TargetName);
+			if(targets[i].TargetName == TargetName){
+				printf("Found it in the array at position %d \n", i);
+				check_dependency_list(targets,i);
+			}
+			/* If there is a problem with the target name, we will display an error*/
+			else if(targets[i].TargetName != TargetName && i == nTargetCount){
+				show_targets_error(TargetName);
+				break;
+			}
+		}
   	}
   	else {
-	    //Should be to nTargetCount in the final version
+	    //Should be to nTargetCount in the final version, it is set to one for testing
 	    for (int i = 0; i < 1; i++) {
 		    printf("Start of target %d \n", i);
 		    printf("%s \n", targets[i].TargetName);
 		    printf("Name of target is above here \n");
 //	    We are told we will have at most ten dependencies, so hard code for now
-		    for (int j = 0; j < 10; j++) {
-			    //Indicates that we are at the end of the dependency list
-			    if (strlen(targets[i].DependencyNames[j]) < 1) {
-				    //TODO: Figure out if this is an unsafe way to check the end of the array
-//				printf("%s\n", targets[i].Command);
-				    char *x = targets[i].Command;
-				    pid_t childpid;
-				    childpid = fork();
-				    if (childpid == -1) {
-					    printf("I failed to fork");
-					    return 1;
-				    }
-				    if (childpid == 0) {
-					    printf("I am the child that will run my command since my parent has"
-					           " no dependencies %ld \n", (long) getpid());
-					    printf("Execute: %s \n", x);
-				    } else {
-					    printf("I am the parent that has no dependencies %ld \n", (long) getpid());
-				    }
-//				printf("I am process %ld and my x is %s \n", (long)getpid(), x);
-				    break;
-			    }
-//			In the case there are more to the dependency list, change the node we are looking at
-			    else {
-				    printf("%s \n", targets[i].DependencyNames[j]);
-//				TODO: We need to branch here to running ./make4061 specificTarget
-			    }
-		    }
+			check_dependency_list(targets, i);
 	    }
     }
   }
