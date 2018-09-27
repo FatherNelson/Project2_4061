@@ -209,6 +209,9 @@ int main(int argc, char *argv[])
 		for(int i = 0; i < nTargetCount; i++){
 			printf("%s \n",targets[i].TargetName);
 			printf("%s \n", TargetName);
+//			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
+
+			//parameter
 			if(targets[i].TargetName == TargetName){
 				printf("Found it in the array at position %d \n", i);
 				check_dependency_list(targets,i);
