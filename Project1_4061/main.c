@@ -60,20 +60,20 @@ int check_dependency_list(target_t targets[], int array_pos){
 				return 1;
 			}
 			if (childpid == 0) {
-//				Make this statement true
-//				printf("I am the child that will run my command since my parent has"
-//				       " no dependencies %ld \n", (long) getpid());
-				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
-				char *cmd = "ls";
-				char *argv[3];
-				argv[0] = "make4061";
-				argv[1] = (char*)targets[array_pos].DependencyNames[j];
-				argv[2] = NULL;
-
-				if(execvp(cmd, argv)<0){ //This will run "ls -la" as if it were a command
-					printf("exec failed");
-				}
-//				TODO: Find a way to make target changes
+////				Make this statement true
+////				printf("I am the child that will run my command since my parent has"
+////				       " no dependencies %ld \n", (long) getpid());
+//				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
+//				char *cmd = "ls";
+//				char *argv[3];
+//				argv[0] = "make4061";
+//				argv[1] = (char*)targets[array_pos].DependencyNames[j];
+//				argv[2] = NULL;
+//
+//				if(execvp(cmd, argv)<0){ //This will run "ls -la" as if it were a command
+//					printf("exec failed");
+//				}
+////				TODO: Find a way to make target changes
 				exit(0); //Return from the child process
 			}
 			else {
@@ -86,7 +86,7 @@ int check_dependency_list(target_t targets[], int array_pos){
 //          dependencies
 		else {
 			printf("%s \n", targets[array_pos].DependencyNames[j]);
-//				TODO: We need to branch here to running ./make4061 specificTarget
+//				TODO: We need to branch here to running ./make4061 specificTarget, Better logging statements plz
 			pid_t childpid;
 			childpid = fork();
 			if (childpid == -1) {
@@ -95,10 +95,11 @@ int check_dependency_list(target_t targets[], int array_pos){
 			}
 			if (childpid == 0) {
 				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
+				//TODO: Put root file in a const
 				char *file = "./make4061";
 				char *argv[3];
-				argv[0] = (char*)targets[array_pos].DependencyNames[j] + '\0';
-				argv[1] = NULL;
+				argv[0] = "./make4061";
+				argv[1] = (char*)targets[array_pos].DependencyNames[j];
 				argv[2] = NULL;
 
 				if(execv(file, argv)<0){ //This will run "ls -la" as if it were a command
@@ -170,6 +171,9 @@ void show_targets(target_t targets[], int nTargetCount)
 //Main commencement
 int main(int argc, char *argv[])
 {
+	printf("argc has value %d\n", argc);
+	printf("first part of command is %s\n", argv[0]);
+	printf("second part of the command %s\n",argv[1]);
   target_t targets[MAX_NODES];
   int nTargetCount = 0;
 
@@ -294,6 +298,7 @@ int main(int argc, char *argv[])
 			}
 			/* If there is a problem with the target name, we will display an error*/
 			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
+//				TODO: if not the first target passed, we should be running the command for the node here.
 				show_targets_error(TargetName);
 				break;
 			}
