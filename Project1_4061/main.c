@@ -77,7 +77,7 @@ int check_dependency_list(target_t targets[], int array_pos){
 				exit(0); //Return from the child process
 			}
 			else {
-				waitpid(childpid, NULL, NULL);
+				wait(0);
 //				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
 			break;
