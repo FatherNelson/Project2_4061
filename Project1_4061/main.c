@@ -14,7 +14,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+/*-------------------------------------------------------PROGRAM CONSTANTS---------------------------------*/
+#define MAX_DEPENDENCIES 10
 /*-------------------------------------------------------HELPER FUNCTIONS PROTOTYPES---------------------------------*/
 void show_error_message(char * ExecName);
 
@@ -45,7 +46,7 @@ void show_targets_error(char* ExecName){
 // is in the graph
 int check_dependency_list(target_t targets[], int array_pos){
 	//	    We are told we will have at most ten dependencies, so hard code for now
-	for (int j = 0; j < 10; j++) {
+	for (int j = 0; j < MAX_DEPENDENCIES; j++) {
 //		printf("%d \n", array_pos);
 		//Indicates that we are at the end of the dependency list
 		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
@@ -62,9 +63,21 @@ int check_dependency_list(target_t targets[], int array_pos){
 //				Make this statement true
 //				printf("I am the child that will run my command since my parent has"
 //				       " no dependencies %ld \n", (long) getpid());
-				printf("Execute: %s \n", x);
+				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
+				char *cmd = "ls";
+				char *argv[3];
+				argv[0] = "make4061";
+				argv[1] = (char*)targets[array_pos].DependencyNames[j];
+				argv[2] = NULL;
+
+				if(execvp(cmd, argv)<0){ //This will run "ls -la" as if it were a command
+					printf("exec failed");
+				}
+//				TODO: Find a way to make target changes
+				exit(0); //Return from the child process
 			}
 			else {
+				waitpid(childpid, NULL, NULL);
 //				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
 			break;
@@ -81,14 +94,22 @@ int check_dependency_list(target_t targets[], int array_pos){
 				return 1;
 			}
 			if (childpid == 0) {
-//				Make this statement true
-//				printf("I am the child that will run my command since my parent has"
-//				       " no dependencies %ld \n", (long) getpid());
 				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
+				char *file = "./make4061";
+				char *argv[3];
+				argv[0] = (char*)targets[array_pos].DependencyNames[j] + '\0';
+				argv[1] = NULL;
+				argv[2] = NULL;
+
+				if(execv(file, argv)<0){ //This will run "ls -la" as if it were a command
+					printf("exec failed");
+				}
 //				TODO: Find a way to make target changes
-				return 1; // MUST return from teh child process
+				exit(0); //Return from the child process
 			}
 			else {
+//				waitpid(childpid, NULL, NULL);
+				wait(0); // wait for the child process to finish
 //				return 1;
 //				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
@@ -140,6 +161,7 @@ void show_targets(target_t targets[], int nTargetCount)
     }
     return;
 }
+
 
 /*-------------------------------------------------------END OF HELPER FUNCTIONS-------------------------------------*/
 
@@ -235,7 +257,7 @@ int main(int argc, char *argv[])
 	
   //Phase2: Begins ----------------------------------------------------------------------------------------------------
   /*Your code begins here*/
-
+//
   /** If a build file is provided**/
   if(fileSet == 1){
   	    printf("Provided a build file. \n");
@@ -279,13 +301,14 @@ int main(int argc, char *argv[])
   	}
   	else {
 	    //Should be to nTargetCount in the final version, it is set to one for testing
-	    for (int i = 0; i < 1; i++) {
-//		    printf("Start of target %d \n", i);
-		    printf("%s \n", targets[i].TargetName);
+
+		    printf("\nBack in the loop at the bottom \n");
+		    printf("\n%s \n", targets[0].TargetName);
+		    printf("Checking targets as I did at the outset \n");
 //		    printf("Name of target is above here \n");
 //	    We are told we will have at most ten dependencies, so hard code for now
-			check_dependency_list(targets, i);
-	    }
+			check_dependency_list(targets, 0);
+
     }
   }
   
