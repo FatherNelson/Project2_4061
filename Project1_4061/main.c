@@ -46,7 +46,7 @@ void show_targets_error(char* ExecName){
 int check_dependency_list(target_t targets[], int array_pos){
 	//	    We are told we will have at most ten dependencies, so hard code for now
 	for (int j = 0; j < 10; j++) {
-		printf("%d \n", array_pos);
+//		printf("%d \n", array_pos);
 		//Indicates that we are at the end of the dependency list
 		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
 			//TODO: Figure out if this is an unsafe way to check the end of the array
@@ -60,15 +60,13 @@ int check_dependency_list(target_t targets[], int array_pos){
 			}
 			if (childpid == 0) {
 //				Make this statement true
-				printf("I am the child that will run my command since my parent has"
-				       " no dependencies %ld \n", (long) getpid());
+//				printf("I am the child that will run my command since my parent has"
+//				       " no dependencies %ld \n", (long) getpid());
 				printf("Execute: %s \n", x);
-				return 1; // MUST return from teh child process
 			}
 			else {
-				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
+//				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
-//				printf("I am process %ld and my x is %s \n", (long)getpid(), x);
 			break;
 		}
 //			In the case there are more to the dependency list, change the node we are looking at and evaluate it for
@@ -84,14 +82,40 @@ int check_dependency_list(target_t targets[], int array_pos){
 			}
 			if (childpid == 0) {
 //				Make this statement true
-				printf("I am the child that will run my command since my parent has"
-				       " no dependencies %ld \n", (long) getpid());
+//				printf("I am the child that will run my command since my parent has"
+//				       " no dependencies %ld \n", (long) getpid());
 				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
+//				TODO: Find a way to make target changes
 				return 1; // MUST return from teh child process
 			}
 			else {
-				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
+//				return 1;
+//				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
+		}
+	}
+	return 1;
+}
+
+void check_target_list(char* TargetName,target_t targets[], int nTargetCount){
+	printf("Target was set: %s \n \n", TargetName);
+//  		Check for where it is in the build file, if the target is not in the build file, complain
+	for(int i = 0; i < nTargetCount; i++){
+		printf("%s \n",targets[i].TargetName);
+		printf("%s \n", TargetName);
+		printf("\n");
+//			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
+
+		//If the target to start at matches this target, check the dependencies here
+		if(strcmp(targets[i].TargetName, TargetName) == 0){
+			printf("Found it in the array at position %d \n \n", i);
+			check_dependency_list(targets,i);
+			return;
+		}
+			/* If there is a problem with the target name, we will display an error*/
+		else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount){
+			show_targets_error(TargetName);
+			return;
 		}
 	}
 }
@@ -111,7 +135,7 @@ void show_targets(target_t targets[], int nTargetCount)
         printf("Dependency Count: %d \n", target_view.DependencyCount);
         printf("Dependency Names: %s \n", target_view.DependencyNames);
         printf("Command: %s \n", target_view.Command);
-        printf("Status: %s \n", target_view.Status);
+        printf("Status: %d \n", target_view.Status);
         printf("<-------- END OF TARGET --------> \n \n");
     }
     return;
@@ -153,6 +177,7 @@ int main(int argc, char *argv[])
 	  		  temp = strdup(optarg);
 	  		  strcpy(Makefile, temp);  // here the strdup returns a string and that is later copied using the strcpy
 	  		  free(temp);	//need to manually free the pointer
+//	  		  printf(Makefile);
 	  		  fileSet = 1; //Sets variable that lets us know a file was chosen
 	  		  break;
 
@@ -213,7 +238,18 @@ int main(int argc, char *argv[])
 
   /** If a build file is provided**/
   if(fileSet == 1){
-  	    printf("Provided a build file.");
+  	    printf("Provided a build file. \n");
+	  //  	TODO: Unsafe way of checking the default, must be improved
+	  if(targetSet){
+		  check_target_list(TargetName, targets, nTargetCount);
+	  }
+	  else {
+		  //Should be to nTargetCount in the final version, it is set to one for testing
+		  for (int i = 0; i < nTargetCount; i++) {
+		  	//We are told we will have at most ten dependencies, so hard code for now
+			  check_dependency_list(targets, i);
+		  }
+	  }
   }
 
   /** If no build file is provided **/
@@ -222,20 +258,20 @@ int main(int argc, char *argv[])
 //  	TODO: Unsafe way of checking the default, must be improved
   	if(targetSet){
   		printf("Target was set: %s \n \n", TargetName);
-//  		Check for where it is in the build file, if the target is not in the build file, complain
+		//Check for where it is in the build file, if the target is not in the build file, complain
 		for(int i = 0; i < nTargetCount; i++){
-//			printf("%s \n",targets[i].TargetName);
-//			printf("%s \n", TargetName);
-//			printf("\n");
-//			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
+			printf("%s \n",targets[i].TargetName);
+			printf("%s \n", TargetName);
+			printf("\n");
+		//TODO: Resolve the type conflict between targets[i].TargetName and TargetName
 
 			//If the target to start at matches this target, check the dependencies here
 			if(strcmp(targets[i].TargetName, TargetName) == 0){
-				printf("Found it in the array at position %d \n", i);
+			//printf("Found it in the array at position %d \n", i);
 				check_dependency_list(targets,i);
 			}
 			/* If there is a problem with the target name, we will display an error*/
-			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount){
+			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
 				show_targets_error(TargetName);
 				break;
 			}
@@ -244,9 +280,9 @@ int main(int argc, char *argv[])
   	else {
 	    //Should be to nTargetCount in the final version, it is set to one for testing
 	    for (int i = 0; i < 1; i++) {
-		    printf("Start of target %d \n", i);
+//		    printf("Start of target %d \n", i);
 		    printf("%s \n", targets[i].TargetName);
-		    printf("Name of target is above here \n");
+//		    printf("Name of target is above here \n");
 //	    We are told we will have at most ten dependencies, so hard code for now
 			check_dependency_list(targets, i);
 	    }

@@ -1,5 +1,5 @@
 all: make4061_test
-	gcc -o make4061 main.c util.o
+	gcc -o make4061_test main.c util.o
 
 make4061_test: util.a main.o
 	gcc -o make4061_test main.o util.a
