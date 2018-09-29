@@ -56,7 +56,8 @@ void change_target(char* dependency){
 //				TODO: Find a way to make target changes
 	exit(0);
 }
-//Separates a command string into an array of strings
+//Separates a command string into an array of strings. Base is the array we want split, target is the array we are
+//outputting from the function
 int getWords(char *base, char target[10][20])
 {
 	int n=0,i,j=0;
@@ -81,10 +82,10 @@ int getWords(char *base, char target[10][20])
 void execute_command(char* cmd){
 	int n; //number of words
 	int i; //loop counter
-	char *str= cmd;
-	char arr[10][20] = {'\0'};
+	char *str= cmd; //The actual command passed to us after verifying the other files are built.
+	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
 
-	n=getWords(str,arr);
+	n=getWords(str,arr); //Parse the command string into digestible chunks so that we can call its' command.
 	printf("START OF COMMAND STRING\n");
 	for(i=0;i<=n;i++)
 		printf("%s\n",arr[i]);
@@ -127,17 +128,11 @@ int check_dependency_list(target_t targets[], int array_pos){
 				return 1;
 			}
 			if (childpid == 0) {
-////				Make this statement true
-////				printf("I am the child that will run my command since my parent has"
-////				       " no dependencies %ld \n", (long) getpid());
 				execute_command(cmd);
-////				TODO: Find a way to make target changes
 				exit(0); //Return from the child process
 			}
 			else {
 				wait(0);
-
-//				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
 			break;
 		}

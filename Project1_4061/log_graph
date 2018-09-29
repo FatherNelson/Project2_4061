@@ -1,0 +1,226 @@
+Artemis:Project1_4061 Grant$ ./make4061 -f graph
+argc has value 3
+first part of command is ./make4061
+second part of the command -f
+Provided a build file.
+make4061_test
+Execute: ./make4061 make4061_test
+argc has value 2
+first part of command is ./make4061
+second part of the command make4061_test
+Target was set: make4061_test
+
+make4061
+make4061_test
+
+util.o
+make4061_test
+
+clean
+make4061_test
+
+make4061_test has no dependencies
+My child is done running
+I am the node rooted at all
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-o
+make4061_test
+main.c
+util.o
+END OF COMMAND STRING
+main.c:202:43: warning: format specifies type 'char *' but the argument has type 'char (*)[64]' [-Wformat]
+        printf("Dependency Names: %s \n", target_view.DependencyNames);
+                                  ~~      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+1 warning generated.
+util.a
+Execute: ./make4061 util.a
+argc has value 2
+first part of command is ./make4061
+second part of the command util.a
+Target was set: util.a
+
+make4061
+util.a
+
+util.o
+util.a
+
+clean
+util.a
+
+util.a has no dependencies
+My child is done running
+I am the node rooted at make4061_test
+main.o
+Execute: ./make4061 main.o
+argc has value 2
+first part of command is ./make4061
+second part of the command main.o
+Target was set: main.o
+
+make4061
+main.o
+
+util.o
+main.o
+
+clean
+main.o
+
+main.o has no dependencies
+My child is done running
+I am the node rooted at make4061_test
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-o
+make4061_test
+main.o
+util.a
+END OF COMMAND STRING
+clang: error: no such file or directory: 'main.o'
+clang: error: no such file or directory: 'util.a'
+clang: error: no input files
+main.c
+Execute: ./make4061 main.c
+argc has value 2
+first part of command is ./make4061
+second part of the command main.c
+Target was set: main.c
+
+make4061
+main.c
+
+util.o
+main.c
+
+clean
+main.c
+
+main.c has no dependencies
+My child is done running
+I am the node rooted at main.o
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-c
+main.c
+END OF COMMAND STRING
+parse.o
+Execute: ./make4061 parse.o
+argc has value 2
+first part of command is ./make4061
+second part of the command parse.o
+Target was set: parse.o
+
+make4061
+parse.o
+
+util.o
+parse.o
+
+clean
+parse.o
+
+parse.o has no dependencies
+My child is done running
+I am the node rooted at util.a
+cal.o
+Execute: ./make4061 cal.o
+argc has value 2
+first part of command is ./make4061
+second part of the command cal.o
+Target was set: cal.o
+
+make4061
+cal.o
+
+util.o
+cal.o
+
+clean
+cal.o
+
+cal.o has no dependencies
+My child is done running
+I am the node rooted at util.a
+I have checked all of my dependencies
+START OF COMMAND STRING
+ar
+rcs
+util.a
+parse.o
+cal.o
+END OF COMMAND STRING
+clang: error: no such file or directory: 'rcs'
+clang: error: no such file or directory: 'util.a'
+clang: error: no such file or directory: 'parse.o'
+clang: error: no such file or directory: 'cal.o'
+clang: error: no input files
+cal.c
+Execute: ./make4061 cal.c
+argc has value 2
+first part of command is ./make4061
+second part of the command cal.c
+Target was set: cal.c
+
+make4061
+cal.c
+
+util.o
+cal.c
+
+clean
+cal.c
+
+cal.c has no dependencies
+My child is done running
+I am the node rooted at cal.o
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-c
+cal.c
+END OF COMMAND STRING
+parse.c
+Execute: ./make4061 parse.c
+argc has value 2
+first part of command is ./make4061
+second part of the command parse.c
+Target was set: parse.c
+
+make4061
+parse.c
+
+util.o
+parse.c
+
+clean
+parse.c
+
+parse.c has no dependencies
+My child is done running
+I am the node rooted at parse.o
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-c
+parse.c
+END OF COMMAND STRING
+I have checked all of my dependencies
+START OF COMMAND STRING
+rm
+-rf
+main.o
+cal.o
+parse.o
+util.a
+make4061_test
+END OF COMMAND STRING
+clang: error: unknown argument: '-rf'
+clang: error: no such file or directory: 'main.o'
+clang: error: no such file or directory: 'cal.o'
+clang: error: no such file or directory: 'parse.o'
+clang: error: no such file or directory: 'util.a'
