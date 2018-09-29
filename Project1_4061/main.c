@@ -82,7 +82,7 @@ void execute_command(char* cmd){
 	int n; //number of words
 	int i; //loop counter
 	char *str= cmd;
-	char arr[10][20];
+	char arr[10][20] = {'\0'};
 
 	n=getWords(str,arr);
 	printf("START OF COMMAND STRING\n");

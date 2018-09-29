@@ -1,3 +1,4 @@
+Artemis:Project1_4061 Grant$ ./make4061
 argc has value 1
 first part of command is ./make4061
 second part of the command (null)
@@ -63,13 +64,6 @@ gcc
 -c
 util.c
 END OF COMMAND STRING
-argc has value 6
-first part of command is gcc
-second part of the command -c
-gcc: illegal option -- c
-Usage: gcc [options] [target] : only single target is allowed.
--f FILE         Read FILE as a makefile.
--h              Print this message and exit.
 clean
 util.o
 
@@ -84,10 +78,5 @@ make4061
 main.c
 util.o
 END OF COMMAND STRING
-argc has value 6
-first part of command is gcc
-second part of the command -o
-gcc: illegal option -- o
-Usage: gcc [options] [target] : only single target is allowed.
--f FILE         Read FILE as a makefile.
--h              Print this message and exit.
+main.c:207:43: warning: format specifies type 'char *' but the argument has type 'char (*)[64]' [-Wformat]
+        printf("Dependency Names: %s \n", target_view.DependencyNames);
