@@ -89,7 +89,7 @@ void execute_command(char* cmd){
 	for(i=0;i<=n;i++)
 		printf("%s\n",arr[i]);
 	printf("END OF COMMAND STRING\n");
-	char *file = "./make4061";
+	char *file = "/usr/bin/gcc";
 	char *argv[MAX_DEPENDENCIES];
 	for(i = 0; i < MAX_DEPENDENCIES; i++){
 		if(strlen(arr[i]) > 0){
@@ -102,10 +102,6 @@ void execute_command(char* cmd){
 	for(i = 0; i < MAX_DEPENDENCIES; i++) {
 		printf("%s ",argv[i]);
 	}
-//	argv[0] = "./make4061";
-//	argv[1] = cmd;
-//	argv[2] = NULL;
-//
 	if(execv(file, argv)<0){
 		printf("exec failed\n");
 	}
