@@ -1,9 +1,6 @@
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
+argc has value 1
+first part of command is ./make4061
+second part of the command (null)
 
 Back in the loop at the bottom
 
@@ -11,256 +8,86 @@ make4061
 Checking targets as I did at the outset
 main.c
 Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
+argc has value 2
+first part of command is ./make4061
+second part of the command main.c
+Target was set: main.c
 
 make4061
-Checking targets as I did at the outset
 main.c
-Execute: ./make4061 main.c
 
-Back in the loop at the bottom
+util.o
+main.c
+
+clean
+main.c
+
+main.c has no dependencies
+My child is done running
+I am the node rooted at make4061
+util.o
+Execute: ./make4061 util.o
+argc has value 2
+first part of command is ./make4061
+second part of the command util.o
+Target was set: util.o
 
 make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
+util.o
 
-Back in the loop at the bottom
+util.o
+util.o
 
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
+util.c
+Execute: ./make4061 util.c
+argc has value 2
+first part of command is ./make4061
+second part of the command util.c
+Target was set: util.c
 
 make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
+util.c
 
-Back in the loop at the bottom
+util.o
+util.c
 
+clean
+util.c
+
+util.c has no dependencies
+My child is done running
+I am the node rooted at util.o
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-c
+util.c
+END OF COMMAND STRING
+argc has value 6
+first part of command is gcc
+second part of the command -c
+gcc: illegal option -- c
+Usage: gcc [options] [target] : only single target is allowed.
+-f FILE         Read FILE as a makefile.
+-h              Print this message and exit.
+clean
+util.o
+
+util.o has no dependencies
+My child is done running
+I am the node rooted at make4061
+I have checked all of my dependencies
+START OF COMMAND STRING
+gcc
+-o
 make4061
-Checking targets as I did at the outset
 main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
-Back in the loop at the bottom
-
-make4061
-Checking targets as I did at the outset
-main.c
-Execute: ./make4061 main.c
-
+util.o
+END OF COMMAND STRING
+argc has value 6
+first part of command is gcc
+second part of the command -o
+gcc: illegal option -- o
+Usage: gcc [options] [target] : only single target is allowed.
+-f FILE         Read FILE as a makefile.
+-h              Print this message and exit.
