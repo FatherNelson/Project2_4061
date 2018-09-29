@@ -35,7 +35,7 @@ typedef struct target{
   int  DependencyCount; //Number of dependencies
   char DependencyNames[10][64]; //Names of all the dependencies
   char Command[256]; //Command that needs to be executed for this target
-  int  Status; //Status of the target(Ready, Finished etc. based on your implementation)
+  int  Status; //Status of the target(Ready, Finished, DONE = 1, READY = 0)
 }target_t;
 /*-------------------------------------------------------END OF STRUCTURE DEFINITION---------------------------------*/
 

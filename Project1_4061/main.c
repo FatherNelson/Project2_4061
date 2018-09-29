@@ -42,6 +42,76 @@ void show_targets_error(char* ExecName){
 	exit(0);
 }
 
+//This function makes you switch the target you are looking at
+void change_target(char* dependency){
+	char *file = "./make4061";
+	char *argv[3];
+	argv[0] = "./make4061";
+	argv[1] = dependency;
+	argv[2] = NULL;
+
+	if(execv(file, argv)<0){ //This will run "ls -la" as if it were a command
+		printf("exec failed");
+	}
+//				TODO: Find a way to make target changes
+	exit(0);
+}
+//Separates a command string into an array of strings
+int getWords(char *base, char target[10][20])
+{
+	int n=0,i,j=0;
+
+	for(i=0;TRUE;i++)
+	{
+		if(base[i]!=' '){
+			target[n][j++]=base[i];
+		}
+		else{
+			target[n][j++]='\0';//insert NULL
+			n++;
+			j=0;
+		}
+		if(base[i]=='\0')
+			break;
+	}
+	return n;
+
+}
+//Once you run out of dependencies, you launch the command for the parent node.
+void execute_command(char* cmd){
+	int n; //number of words
+	int i; //loop counter
+	char *str= cmd;
+	char arr[10][20];
+
+	n=getWords(str,arr);
+	printf("START OF COMMAND STRING\n");
+	for(i=0;i<=n;i++)
+		printf("%s\n",arr[i]);
+	printf("END OF COMMAND STRING\n");
+	char *file = "./make4061";
+	char *argv[MAX_DEPENDENCIES];
+	for(i = 0; i < MAX_DEPENDENCIES; i++){
+		if(strlen(arr[i]) > 0){
+			argv[i] = arr[i];
+		}
+		else{
+			break;
+		}
+	}
+	for(i = 0; i < MAX_DEPENDENCIES; i++) {
+		printf("%s ",argv[i]);
+	}
+//	argv[0] = "./make4061";
+//	argv[1] = cmd;
+//	argv[2] = NULL;
+//
+	if(execv(file, argv)<0){
+		printf("exec failed\n");
+	}
+//				TODO: Find a way to make target changes
+	exit(0);
+}
 //A function to check the dependency list of any node given the list of targets and where the current node being checked
 // is in the graph
 int check_dependency_list(target_t targets[], int array_pos){
@@ -52,7 +122,8 @@ int check_dependency_list(target_t targets[], int array_pos){
 		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
 			//TODO: Figure out if this is an unsafe way to check the end of the array
 //				printf("%s\n", targets[i].Command);
-			char *x = targets[array_pos].Command;
+			printf("I have checked all of my dependencies\n");
+			char *cmd = targets[array_pos].Command;
 			pid_t childpid;
 			childpid = fork();
 			if (childpid == -1) {
@@ -63,21 +134,13 @@ int check_dependency_list(target_t targets[], int array_pos){
 ////				Make this statement true
 ////				printf("I am the child that will run my command since my parent has"
 ////				       " no dependencies %ld \n", (long) getpid());
-//				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
-//				char *cmd = "ls";
-//				char *argv[3];
-//				argv[0] = "make4061";
-//				argv[1] = (char*)targets[array_pos].DependencyNames[j];
-//				argv[2] = NULL;
-//
-//				if(execvp(cmd, argv)<0){ //This will run "ls -la" as if it were a command
-//					printf("exec failed");
-//				}
+				execute_command(cmd);
 ////				TODO: Find a way to make target changes
 				exit(0); //Return from the child process
 			}
 			else {
 				wait(0);
+
 //				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
 			}
 			break;
@@ -95,24 +158,14 @@ int check_dependency_list(target_t targets[], int array_pos){
 			}
 			if (childpid == 0) {
 				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
-				//TODO: Put root file in a const
-				char *file = "./make4061";
-				char *argv[3];
-				argv[0] = "./make4061";
-				argv[1] = (char*)targets[array_pos].DependencyNames[j];
-				argv[2] = NULL;
-
-				if(execv(file, argv)<0){ //This will run "ls -la" as if it were a command
-					printf("exec failed");
-				}
-//				TODO: Find a way to make target changes
+				char *dependency = (char*)targets[array_pos].DependencyNames[j];
+				change_target(dependency);
 				exit(0); //Return from the child process
 			}
 			else {
-//				waitpid(childpid, NULL, NULL);
 				wait(0); // wait for the child process to finish
-//				return 1;
-//				printf("I am the parent that has no dependencies %ld \n", (long) getpid());
+				printf("My child is done running\n");
+				printf("I am the node rooted at %s\n", targets[array_pos].TargetName);
 			}
 		}
 	}
@@ -299,7 +352,8 @@ int main(int argc, char *argv[])
 			/* If there is a problem with the target name, we will display an error*/
 			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
 //				TODO: if not the first target passed, we should be running the command for the node here.
-				show_targets_error(TargetName);
+				printf("%s has no dependencies\n", TargetName);
+				//show_targets_error(TargetName);
 				break;
 			}
 		}
