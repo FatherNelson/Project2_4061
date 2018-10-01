@@ -43,17 +43,18 @@ void show_targets_error(char* ExecName){
 }
 
 //This function makes you switch the target you are looking at
-void change_target(char* dependency){
+void change_target(char* dependency, char* Makefile){
 	char *file = "./make4061";
-	char *argv[3];
+	char *argv[5];
 	argv[0] = "./make4061";
-	argv[1] = dependency;
-	argv[2] = NULL;
+	argv[1] = "-f";
+	argv[2] = Makefile;
+	argv[3] = dependency;
+	argv[4] = NULL;
 
 	if(execv(file, argv)<0){ //This will run "ls -la" as if it were a command
 		printf("exec failed");
 	}
-//				TODO: Find a way to make target changes
 	exit(0);
 }
 //Separates a command string into an array of strings. Base is the array we want split, target is the array we are
@@ -91,8 +92,8 @@ void execute_command(char* cmd){
 		printf("%s\n",arr[i]);
 	printf("END OF COMMAND STRING\n");
 	char *file = "/usr/bin/gcc";
-	char *argv[MAX_DEPENDENCIES];
-	for(i = 0; i < MAX_DEPENDENCIES; i++){
+	char *argv = (char*) malloc (n);
+	for(i = 0; i < n; i++){
 		if(strlen(arr[i]) > 0){
 			argv[i] = arr[i];
 		}
@@ -100,19 +101,17 @@ void execute_command(char* cmd){
 			break;
 		}
 	}
-	for(i = 0; i < MAX_DEPENDENCIES; i++) {
+	for(i = 0; i < n; i++) {
 		printf("%s ",argv[i]);
 	}
 	if(execv(file, argv)<0){
 		printf("exec failed\n");
 	}
-//				TODO: Find a way to make target changes
 	exit(0);
 }
 //A function to check the dependency list of any node given the list of targets and where the current node being checked
 // is in the graph
-int check_dependency_list(target_t targets[], int array_pos){
-	//	    We are told we will have at most ten dependencies, so hard code for now
+int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 	for (int j = 0; j < MAX_DEPENDENCIES; j++) {
 //		printf("%d \n", array_pos);
 		//Indicates that we are at the end of the dependency list
@@ -150,7 +149,7 @@ int check_dependency_list(target_t targets[], int array_pos){
 			if (childpid == 0) {
 				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
 				char *dependency = (char*)targets[array_pos].DependencyNames[j];
-				change_target(dependency);
+				change_target(dependency, Makefile);
 				exit(0); //Return from the child process
 			}
 			else {
@@ -163,19 +162,19 @@ int check_dependency_list(target_t targets[], int array_pos){
 	return 1;
 }
 
-void check_target_list(char* TargetName,target_t targets[], int nTargetCount){
+void check_target_list(char* TargetName,target_t targets[], int nTargetCount, char* Makefile){
 	printf("Target was set: %s \n \n", TargetName);
 //  		Check for where it is in the build file, if the target is not in the build file, complain
 	for(int i = 0; i < nTargetCount; i++){
-		printf("%s \n",targets[i].TargetName);
-		printf("%s \n", TargetName);
-		printf("\n");
+		//printf("%s \n",targets[i].TargetName);
+		////////printf("%s \n", TargetName);
+		//printf("\n");
 //			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
 
 		//If the target to start at matches this target, check the dependencies here
 		if(strcmp(targets[i].TargetName, TargetName) == 0){
 			printf("Found it in the array at position %d \n \n", i);
-			check_dependency_list(targets,i);
+			check_dependency_list(targets,i, Makefile);
 			return;
 		}
 			/* If there is a problem with the target name, we will display an error*/
@@ -302,7 +301,7 @@ int main(int argc, char *argv[])
    * etc. Else if no target is mentioned then build the first target
    * found in Makefile.
    */
-	
+
   //Phase2: Begins ----------------------------------------------------------------------------------------------------
   /*Your code begins here*/
 //
@@ -311,14 +310,10 @@ int main(int argc, char *argv[])
   	    printf("Provided a build file. \n");
 	  //  	TODO: Unsafe way of checking the default, must be improved
 	  if(targetSet){
-		  check_target_list(TargetName, targets, nTargetCount);
+		  check_target_list(TargetName, targets, nTargetCount, Makefile);
 	  }
 	  else {
-		  //Should be to nTargetCount in the final version, it is set to one for testing
-		  for (int i = 0; i < nTargetCount; i++) {
-		  	//We are told we will have at most ten dependencies, so hard code for now
-			  check_dependency_list(targets, i);
-		  }
+			check_dependency_list(targets, i, Makefile);
 	  }
   }
 
@@ -338,7 +333,7 @@ int main(int argc, char *argv[])
 			//If the target to start at matches this target, check the dependencies here
 			if(strcmp(targets[i].TargetName, TargetName) == 0){
 			//printf("Found it in the array at position %d \n", i);
-				check_dependency_list(targets,i);
+				check_dependency_list(targets,i, Makefile);
 			}
 			/* If there is a problem with the target name, we will display an error*/
 			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
@@ -357,12 +352,12 @@ int main(int argc, char *argv[])
 		    printf("Checking targets as I did at the outset \n");
 //		    printf("Name of target is above here \n");
 //	    We are told we will have at most ten dependencies, so hard code for now
-			check_dependency_list(targets, 0);
+			check_dependency_list(targets, 0, Makefile);
 
     }
   }
-  
-  
+
+
   /*End of your code*/
   //End of Phase2------------------------------------------------------------------------------------------------------
 
