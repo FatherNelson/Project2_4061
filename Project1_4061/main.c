@@ -45,7 +45,7 @@ void show_targets_error(char* ExecName){
 //This function makes you switch the target you are looking at
 void change_target(char* dependency, char* Makefile){
 	char *file = "./make4061";
-	char *argv[5];
+	char *argv[6];
 	argv[0] = "./make4061";
 	argv[1] = "-f";
 	argv[2] = Makefile;
@@ -91,7 +91,8 @@ void execute_command(char* cmd){
 	for(i=0;i<=n;i++)
 		printf("%s\n",arr[i]);
 	printf("END OF COMMAND STRING\n");
-	char *file = "/usr/bin/gcc";
+	const char *file = arr[0];
+	printf("I am the value of file %s\n", file);
 	char *argv[MAX_DEPENDENCIES];
 	for(i = 0; i <= n; i++){
 		if(strlen(arr[i]) > 0){
@@ -102,20 +103,13 @@ void execute_command(char* cmd){
 		/** Part of dev, remove later**/
 		else{
 			printf("I am not a string\n");
-			argv[i] = NULL;
 			break;
 		}
 	}
-//	execv(file, argv);
-//	for(i = 0; i < n; i++) {
-//		printf("%s ",argv[i]);
-//
-//	}
-	if(execv(file, argv) <0){
+	argv[i] = NULL;
+	if(execvp(file, argv) <0){
 		printf("exec failed\n");
-	}
-	else{
-		printf("exec succeeded\n");
+		printf("%s\n",file);
 	}
 	exit(0);
 }
@@ -130,7 +124,8 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 //				printf("%s\n", targets[i].Command);
 			printf("I have checked all of my dependencies\n");
 			char *cmd = targets[array_pos].Command;
-			pid_t childpid;
+			pid_t childpid,wpid;
+			int status = 0;
 			childpid = fork();
 			if (childpid == -1) {
 				printf("I failed to fork");
@@ -141,7 +136,8 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 				exit(0); //Return from the child process
 			}
 			else {
-				wait(0);
+//				while ((wpid = wait(&status)) > 0);
+				wait(NULL);
 			}
 			break;
 		}
@@ -150,7 +146,8 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 		else {
 			printf("%s \n", targets[array_pos].DependencyNames[j]);
 //				TODO: We need to branch here to running ./make4061 specificTarget, Better logging statements plz
-			pid_t childpid;
+			pid_t childpid, wpid;
+			int status = 0;
 			childpid = fork();
 			if (childpid == -1) {
 				printf("I failed to fork");
@@ -163,6 +160,7 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 				exit(0); //Return from the child process
 			}
 			else {
+//				while ((wpid = wait(&status)) > 0);
 				wait(0); // wait for the child process to finish
 				printf("My child is done running\n");
 				printf("I am the node rooted at %s\n", targets[array_pos].TargetName);
