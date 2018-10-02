@@ -92,20 +92,30 @@ void execute_command(char* cmd){
 		printf("%s\n",arr[i]);
 	printf("END OF COMMAND STRING\n");
 	char *file = "/usr/bin/gcc";
-	char *argv = (char*) malloc (n);
-	for(i = 0; i < n; i++){
+	char *argv[MAX_DEPENDENCIES];
+	for(i = 0; i <= n; i++){
 		if(strlen(arr[i]) > 0){
 			argv[i] = arr[i];
+//			printf("I am the value of arri %s\n", arr[i]);
+			printf("I am the value of argvi %s\n", argv[i]);
 		}
+		/** Part of dev, remove later**/
 		else{
+			printf("I am not a string\n");
+			argv[i] = NULL;
 			break;
 		}
 	}
-	for(i = 0; i < n; i++) {
-		printf("%s ",argv[i]);
-	}
-	if(execv(file, argv)<0){
+//	execv(file, argv);
+//	for(i = 0; i < n; i++) {
+//		printf("%s ",argv[i]);
+//
+//	}
+	if(execv(file, argv) <0){
 		printf("exec failed\n");
+	}
+	else{
+		printf("exec succeeded\n");
 	}
 	exit(0);
 }
@@ -313,7 +323,8 @@ int main(int argc, char *argv[])
 		  check_target_list(TargetName, targets, nTargetCount, Makefile);
 	  }
 	  else {
-			check_dependency_list(targets, i, Makefile);
+			/**If no target is provided run from the very first node **/
+			check_dependency_list(targets, 0, Makefile);
 	  }
   }
 
