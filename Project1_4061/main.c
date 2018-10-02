@@ -107,10 +107,10 @@ void execute_command(char* cmd){
 		}
 	}
 	argv[i] = NULL;
-	if(execvp(file, argv) <0){
-		printf("exec failed\n");
-		printf("%s\n",file);
-	}
+	execvp(file, argv);
+	// If here, exec failed
+	printf("exec failed\n");
+	printf("errno is %s\n", strerror(errno));
 	exit(0);
 }
 //A function to check the dependency list of any node given the list of targets and where the current node being checked
