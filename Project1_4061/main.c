@@ -76,6 +76,54 @@ int check_date(char *file_to_check){
 	return (int)stbuf.st_atime;
 }
 
+//This function compares the date times of the files and returns a true or false on if the execution should still run
+int compare_datetime(char *file_to_check, char *ext){
+	if(strcmp(ext,"c") == 0) {
+		int ctime = check_date(file_to_check);
+//		printf("%d\n", ctime);
+		char ofilename[50] = {'\0'}; //Buffer for the object name
+		char *copy[50];
+		strcpy(copy, file_to_check);
+		char *FileToken = strtok(copy, "."); //Name of the file we found a c file of alreadyx
+//		TODO: Get the file name up to the extension here.
+		strcat(ofilename, FileToken);
+		strcat(ofilename, ".");
+		strcat(ofilename, "o");
+		printf("%s\n", ofilename);
+		int otime = check_date(ofilename);
+		printf(".c timestamp is %d\n", ctime);
+		printf(".o timestamp is %d\n", otime);
+		if (otime > ctime) {
+			printf("We should not run this process, c is older than o \n");
+		}
+		if (ctime > otime) {
+			printf("We should run this process, o is older than c. \n");
+		}
+	}
+	else if(strcmp(ext,"o") == 0){
+		int otime = check_date(file_to_check);
+//		printf("%d\n", ctime);
+		char cfilename[50] = {'\0'}; //Buffer for the object name
+		char *copy[50];
+		strcpy(copy,file_to_check);
+		char *FileToken = strtok(copy, "."); //Name of the file we found a c file of alreadyx
+//		TODO: Get the file name up to the extension here.
+		strcat(cfilename, FileToken);
+		strcat(cfilename,".");
+		strcat(cfilename,"o");
+		printf("%s\n",cfilename);
+		int ctime = check_date(cfilename);
+		printf(".c timestamp is: %d\n", ctime);
+		printf(".o timestamp is: %d\n", otime);
+		if(otime > ctime){
+			printf("O is greater than c \n");
+		}
+		if(ctime > otime){
+			printf("C is greater than o \n");
+		}
+	}
+}
+
 //This function makes you switch the target you are looking at. This is dependent on our implementation so we may
 //hard code the vector as we did here.
 void change_target(char* dependency, char* Makefile){
@@ -146,30 +194,13 @@ int execute_command(target_t targets[], char* cmd){
 	}
 	argv[i] = NULL;
 	char *file_extension =check_extension(argv[2]);
-	if(strcmp(file_extension, "c") == 0){
-		ctime = check_date(argv[2]);
-		printf("%d\n", ctime);
-		char ofilename[50] = {'\0'}; //Buffer for the object name
-		char *copy[50];
-		strcpy(copy,argv[2]);
-		char *FileToken = strtok(copy, "."); //Name of the file we found a c file of alreadyx
-//		TODO: Get the file name up to the extension here.
-		strcat(ofilename, FileToken);
-		strcat(ofilename,".");
-		strcat(ofilename,"o");
-		printf("%s\n",ofilename);
-		otime = check_date(ofilename);
-		if(otime > ctime){
-			printf("We should not run this process, no new changes");
-		}
-		if(ctime > otime){
-			printf("We should run this process, file has been modified.");
-		}
-	}
-	else if(strcmp(file_extension, "o") ==0){
-		otime = check_date(argv[2]);
-	}
-
+	compare_datetime(argv[2], file_extension);
+//	if(strcmp(file_extension, "c") == 0){
+//		compare_datetime(argv[2], file_extension);
+//	}
+//	else if(strcmp(file_extension, "o") ==0){
+//		compare_datetime(argv[2], file_extension);
+//	}
 	execvp(file, argv);
 	// If here, exec failed
 	printf("exec failed\n");
