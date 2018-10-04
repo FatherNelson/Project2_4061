@@ -80,7 +80,7 @@ int getWords(char *base, char target[10][20])
 
 }
 //Once you run out of dependencies, you launch the command for the parent node.
-void execute_command(char* cmd){
+void execute_command(target_t targets[], char* cmd){
 	int n; //number of words
 	int i; //loop counter
 	char *str= cmd; //The actual command passed to us after verifying the other files are built.
@@ -98,7 +98,7 @@ void execute_command(char* cmd){
 		if(strlen(arr[i]) > 0){
 			argv[i] = arr[i];
 //			printf("I am the value of arri %s\n", arr[i]);
-			printf("I am the value of argvi %s\n", argv[i]);
+//			printf("I am the value of argvi %s\n", argv[i]);
 		}
 		/** Part of dev, remove later**/
 		else{
@@ -132,12 +132,13 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 				return 1;
 			}
 			if (childpid == 0) {
-				execute_command(cmd);
+				execute_command(targets, cmd);
 				exit(0); //Return from the child process
 			}
 			else {
 //				while ((wpid = wait(&status)) > 0);
 				wait(NULL);
+				targets[array_pos].Status = 1; //Writes the status of the root
 			}
 			break;
 		}
@@ -170,6 +171,7 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile){
 	return 1;
 }
 
+//This function will go through the code base and attempt to find any target that was called for in the command line
 void check_target_list(char* TargetName,target_t targets[], int nTargetCount, char* Makefile){
 	printf("Target was set: %s \n \n", TargetName);
 //  		Check for where it is in the build file, if the target is not in the build file, complain
@@ -212,6 +214,14 @@ void show_targets(target_t targets[], int nTargetCount)
         printf("<-------- END OF TARGET --------> \n \n");
     }
     return;
+}
+
+//This function merely shows the status of each node whether that is a date object or simply an integer
+int show_status(int nTargetCount, target_t targets[] ){
+	for(int i = 0; i < nTargetCount; i++){
+		printf("I am target %s and I have status %d\n", targets[i].TargetName, targets[i].Status);
+	}
+	return 0;
 }
 
 
@@ -365,6 +375,8 @@ int main(int argc, char *argv[])
 
     }
   }
+  show_status(nTargetCount, targets);
+
 
 
   /*End of your code*/
