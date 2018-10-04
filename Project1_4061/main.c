@@ -39,25 +39,53 @@ void show_error_message(char * ExecName)
 }
 
 //Write your functions here
+//Logs an error message
 void show_targets_error(char* ExecName){
 	fprintf(stderr, "Target %s does not exist. Please enter a valid build target \n", ExecName);
 	exit(0);
 }
 
-//Checks the status of the target
+
+//This function checks the extensions of files, i.e., will give you .o or .c designation.
+void check_extension(char *file_to_check){
+	char *ext;
+	ext = strrchr(file_to_check, '.');
+	if (!ext) {
+		/* no extension */
+		printf("this file has no extension");
+	}
+	else {
+		printf("extension is %s\n", ext + 1);
+	}
+}
+
+//Checks the timestamp of the last modification of the file.
 void check_date(char *file_to_check){
 	printf("%s\n", file_to_check);
 	char *date = "date";
-	char *argv[4];
+	char *argv[5];
 	argv[0] = "date";
 	argv[1] = "-r";
 	argv[2] = file_to_check;
-	argv[3] = NULL;
-	if(execvp(date,argv) <0){
-		printf("exec failed");
+	argv[3] = "+%s";
+	argv[4] = NULL;
+	check_extension(file_to_check);
+	pid_t childpid;
+	childpid = fork();
+	if(childpid == -1){
+		printf("failed to fork");
 	}
-	return;
+	else if(childpid == 0){
+		if(execvp(date,argv) <0){
+			printf("exec failed");
+		}
+	}
+	else{
+		wait(0);
+		printf("done checking the dates.\n");
+	}
 }
+
 //This function makes you switch the target you are looking at. This is dependent on our implementation so we may
 //hard code the vector as we did here.
 void change_target(char* dependency, char* Makefile){
@@ -400,6 +428,7 @@ int main(int argc, char *argv[])
 
   show_status(nTargetCount, targets);
   check_date("util.o");
+  check_date("util.c");
 
 
 
