@@ -13,6 +13,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 /*-------------------------------------------------------PROGRAM CONSTANTS---------------------------------*/
 #define MAX_DEPENDENCIES 10
@@ -47,43 +50,30 @@ void show_targets_error(char* ExecName){
 
 
 //This function checks the extensions of files, i.e., will give you .o or .c designation.
-void check_extension(char *file_to_check){
+char* check_extension(char *file_to_check){
 	char *ext;
 	ext = strrchr(file_to_check, '.');
 	if (!ext) {
 		/* no extension */
-		printf("this file has no extension");
+		printf("this file has no extension\n");
+		return NULL;
 	}
 	else {
 		printf("extension is %s\n", ext + 1);
+		return ext+1;
 	}
 }
 
 //Checks the timestamp of the last modification of the file.
-void check_date(char *file_to_check){
-	printf("%s\n", file_to_check);
+int check_date(char *file_to_check){
+	printf("I am checking the date of file %s\n", file_to_check);
 	char *date = "date";
-	char *argv[5];
-	argv[0] = "date";
-	argv[1] = "-r";
-	argv[2] = file_to_check;
-	argv[3] = "+%s";
-	argv[4] = NULL;
-	check_extension(file_to_check);
-	pid_t childpid;
-	childpid = fork();
-	if(childpid == -1){
-		printf("failed to fork");
-	}
-	else if(childpid == 0){
-		if(execvp(date,argv) <0){
-			printf("exec failed");
-		}
-	}
-	else{
-		wait(0);
-		printf("done checking the dates.\n");
-	}
+	struct stat stbuf;
+	stat(file_to_check, &stbuf);
+//	printf("Access time  = %d\n",stbuf.st_atime);
+//	printf("Modification time  = %d\n",stbuf.st_mtime);
+//	printf("Change time  = %d\n",stbuf.st_mtime);
+	return (int)stbuf.st_atime;
 }
 
 //This function makes you switch the target you are looking at. This is dependent on our implementation so we may
@@ -129,6 +119,8 @@ int getWords(char *base, char target[10][20])
 int execute_command(target_t targets[], char* cmd){
 	int n; //number of words
 	int i; //loop counter
+	int ctime; //Gives the last modification date of the c file
+	int otime; //Gives the last modification date of the o file
 	char *str= cmd; //The actual command passed to us after verifying the other files are built.
 	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
 
@@ -153,6 +145,26 @@ int execute_command(target_t targets[], char* cmd){
 		}
 	}
 	argv[i] = NULL;
+	char *file_extension =check_extension(argv[2]);
+	if(strcmp(file_extension, "c") == 0){
+		ctime = check_date(argv[2]);
+		printf("%d\n", ctime);
+		char *oname[50] = {'\0'}; //Buffer for the object name
+		char *FileName[50] = {'\0'};
+		int i = 0;
+//		TODO: Get the file name up to the extension here.
+
+		printf("%s",FileName);
+		char *b = "util";
+		strcat(oname, b);
+		strcat(oname,".");
+		strcat(oname,file_extension);
+		printf("%s\n",oname);
+	}
+	else if(strcmp(file_extension, "o") ==0){
+		otime = check_date(argv[2]);
+	}
+
 	execvp(file, argv);
 	// If here, exec failed
 	printf("exec failed\n");
@@ -212,7 +224,7 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 				printf("My child is done running\n");
 				printf("I am the node rooted at %s\n", targets[array_pos].TargetName);
 				targets[array_pos].Status = 1; //Writes the status of the root
-				show_status(nTargetCount, targets);
+//				show_status(nTargetCount, targets);
 			}
 		}
 	}
@@ -426,9 +438,8 @@ int main(int argc, char *argv[])
   }
 //  TODO: Write the state of the targets to some global state that is mutable here only, I think another file
 
-  show_status(nTargetCount, targets);
-  check_date("util.o");
-  check_date("util.c");
+//  show_status(nTargetCount, targets);
+
 
 
 
