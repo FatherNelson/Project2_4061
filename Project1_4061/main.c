@@ -149,17 +149,22 @@ int execute_command(target_t targets[], char* cmd){
 	if(strcmp(file_extension, "c") == 0){
 		ctime = check_date(argv[2]);
 		printf("%d\n", ctime);
-		char *oname[50] = {'\0'}; //Buffer for the object name
-		char *FileName[50] = {'\0'};
-		int i = 0;
+		char ofilename[50] = {'\0'}; //Buffer for the object name
+		char *copy[50];
+		strcpy(copy,argv[2]);
+		char *FileToken = strtok(copy, "."); //Name of the file we found a c file of alreadyx
 //		TODO: Get the file name up to the extension here.
-
-		printf("%s",FileName);
-		char *b = "util";
-		strcat(oname, b);
-		strcat(oname,".");
-		strcat(oname,file_extension);
-		printf("%s\n",oname);
+		strcat(ofilename, FileToken);
+		strcat(ofilename,".");
+		strcat(ofilename,"o");
+		printf("%s\n",ofilename);
+		otime = check_date(ofilename);
+		if(otime > ctime){
+			printf("We should not run this process, no new changes");
+		}
+		if(ctime > otime){
+			printf("We should run this process, file has been modified.");
+		}
 	}
 	else if(strcmp(file_extension, "o") ==0){
 		otime = check_date(argv[2]);
