@@ -17,4 +17,4 @@ parse.o: parse.c
 	gcc -c parse.c
 
 clean:
-	rm -rf main.o cal.o parse.o util.a make4061_test
+	rm -rf main.o cal.o parse.o util.a util.o make4061_test

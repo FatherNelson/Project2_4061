@@ -45,7 +45,12 @@ char* file_getline(char* buffer, FILE* fp)
 int does_file_exist(char * lpszFileName)
 {
 	//access functions returns -1 if there is an error
-	return access(lpszFileName, F_OK);
+	if(access(lpszFileName, F_OK) == -1){
+		return 0;
+	}
+	else{
+		return 1;
+	}
 }
 /*-------------------------------------------------------ENDS OF FILE ACCESSBILITY-----------------------------------*/
 

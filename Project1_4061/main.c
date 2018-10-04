@@ -70,59 +70,10 @@ int check_date(char *file_to_check){
 	char *date = "date";
 	struct stat stbuf;
 	stat(file_to_check, &stbuf);
-//	printf("Access time  = %d\n",stbuf.st_atime);
-//	printf("Modification time  = %d\n",stbuf.st_mtime);
-//	printf("Change time  = %d\n",stbuf.st_mtime);
 	return (int)stbuf.st_atime;
 }
 
-//This function compares the date times of the files and returns a true or false on if the execution should still run
-int compare_datetime(char *file_to_check, char *ext){
-	if(strcmp(ext,"c") == 0) {
-		int ctime = check_date(file_to_check);
-//		printf("%d\n", ctime);
-		char ofilename[50] = {'\0'}; //Buffer for the object name
-		char *copy[50];
-		strcpy(copy, file_to_check);
-		char *FileToken = strtok(copy, "."); //Name of the file we found a c file of alreadyx
-//		TODO: Get the file name up to the extension here.
-		strcat(ofilename, FileToken);
-		strcat(ofilename, ".");
-		strcat(ofilename, "o");
-		printf("%s\n", ofilename);
-		int otime = check_date(ofilename);
-		printf(".c timestamp is %d\n", ctime);
-		printf(".o timestamp is %d\n", otime);
-		if (otime > ctime) {
-			printf("We should not run this process, c is older than o \n");
-		}
-		if (ctime > otime) {
-			printf("We should run this process, o is older than c. \n");
-		}
-	}
-	else if(strcmp(ext,"o") == 0){
-		int otime = check_date(file_to_check);
-//		printf("%d\n", ctime);
-		char cfilename[50] = {'\0'}; //Buffer for the object name
-		char *copy[50];
-		strcpy(copy,file_to_check);
-		char *FileToken = strtok(copy, "."); //Name of the file we found a c file of alreadyx
-//		TODO: Get the file name up to the extension here.
-		strcat(cfilename, FileToken);
-		strcat(cfilename,".");
-		strcat(cfilename,"o");
-		printf("%s\n",cfilename);
-		int ctime = check_date(cfilename);
-		printf(".c timestamp is: %d\n", ctime);
-		printf(".o timestamp is: %d\n", otime);
-		if(otime > ctime){
-			printf("O is greater than c \n");
-		}
-		if(ctime > otime){
-			printf("C is greater than o \n");
-		}
-	}
-}
+
 
 //This function makes you switch the target you are looking at. This is dependent on our implementation so we may
 //hard code the vector as we did here.
@@ -164,7 +115,7 @@ int getWords(char *base, char target[10][20])
 }
 //Once you run out of dependencies, you launch the command for the parent node. This function will execute the command
 //that the target must.
-int execute_command(target_t targets[], char* cmd){
+int execute_command(target_t targets[], int array_pos, char* cmd){
 	int n; //number of words
 	int i; //loop counter
 	int ctime; //Gives the last modification date of the c file
@@ -173,10 +124,11 @@ int execute_command(target_t targets[], char* cmd){
 	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
 
 	n=getWords(str,arr); //Parse the command string into digestible chunks so that we can call its' command.
-//	printf("START OF COMMAND STRING\n");
-//	for(i=0;i<=n;i++)
-//		printf("%s\n",arr[i]);
-//	printf("END OF COMMAND STRING\n");
+	/** This block prints out the command strings**/
+	printf("START OF COMMAND STRING\n");
+	for(i=0;i<=n;i++)
+		printf("%s\n",arr[i]);
+	printf("END OF COMMAND STRING\n");
 	const char *file = arr[0];
 	printf("I am the value of file %s\n", file);
 	char *argv[MAX_DEPENDENCIES];
@@ -193,18 +145,25 @@ int execute_command(target_t targets[], char* cmd){
 		}
 	}
 	argv[i] = NULL;
-	char *file_extension =check_extension(argv[2]);
-	compare_datetime(argv[2], file_extension);
-//	if(strcmp(file_extension, "c") == 0){
-//		compare_datetime(argv[2], file_extension);
-//	}
-//	else if(strcmp(file_extension, "o") ==0){
-//		compare_datetime(argv[2], file_extension);
-//	}
-	execvp(file, argv);
-	// If here, exec failed
-	printf("exec failed\n");
-	printf("errno is %s\n", strerror(errno));
+//	char *file_extension =check_extension(argv[2]);
+	char *target = (char*) targets[array_pos].TargetName; // Set the target for time comparisons (target we are building)
+	int comparison = 0; // Check to see if a dependency must be built.
+	for(int i = 0; i < targets[array_pos].DependencyCount; i++){
+		comparison = compare_modification_time(target, targets[array_pos].DependencyNames[i]);
+		if(comparison == 2){
+			break;
+		}
+	}
+//	compare_datetime(argv[2], file_extension);
+	if(comparison == 2 || !does_file_exist(target)) {
+		execvp(file, argv);
+		// If here, exec failed
+		printf("exec failed\n");
+		printf("errno is %s\n", strerror(errno));
+	}
+	else{
+		printf("We didn't need to run another process \n");
+	}
 	exit(0);
 }
 //A function to check the dependency list of any node given the list of targets and where the current node being checked
@@ -226,7 +185,7 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 				return 0;
 			}
 			if (childpid == 0) {
-				execute_command(targets, cmd);
+				execute_command(targets, array_pos, cmd);
 				exit(0); //Return from the child process
 			}
 			else {
@@ -453,7 +412,7 @@ int main(int argc, char *argv[])
 			/* If there is a problem with the target name, we will display an error*/
 			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
 //				TODO: if not the first target passed, we should be running the command for the node here.
-				printf("%s has no dependencies\n", TargetName);
+//				printf("%s has no dependencies\n", TargetName);
 				//show_targets_error(TargetName);
 				break;
 			}
@@ -462,9 +421,9 @@ int main(int argc, char *argv[])
   	else {
 	    //Should be to nTargetCount in the final version, it is set to one for testing
 
-		    printf("\nBack in the loop at the bottom \n");
-		    printf("\n%s \n", targets[0].TargetName);
-		    printf("Checking targets as I did at the outset \n");
+//		    printf("\nBack in the loop at the bottom \n");
+//		    printf("\n%s \n", targets[0].TargetName);
+//		    printf("Checking targets as I did at the outset \n");
 //		    printf("Name of target is above here \n");
 //	    We are told we will have at most ten dependencies, so hard code for now
 			check_dependency_list(targets, 0, Makefile, nTargetCount);
