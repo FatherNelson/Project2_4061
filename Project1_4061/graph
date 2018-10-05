@@ -1,8 +1,8 @@
-all: make4061_test
-	gcc -o make4061_test main.c util.o
+all: make4061
+	gcc -o make4061 main.c util.o
 
 make4061_test: util.a main.o
-	gcc -o make4061_test main.o util.a
+	gcc -o make4061 main.o util.a
 
 main.o: main.c
 	gcc -c main.c
@@ -17,4 +17,4 @@ parse.o: parse.c
 	gcc -c parse.c
 
 clean:
-	rm -rf main.o cal.o parse.o util.a util.o make4061_test
+	rm -rf main.o cal.o parse.o util.a util.o make4061
