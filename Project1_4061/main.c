@@ -118,10 +118,7 @@ int execute_command(target_t targets[], int array_pos, char* cmd){
 	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
 
 	n=getWords(str,arr); //Parse the command string into digestible chunks so that we can call its' command.
-	printf("Executing command: ");
-	for(i=0;i<n;i++) {
-		printf("%s ", arr[i]);
-	}
+
 	const char *file = arr[0];
 	char *argv[MAX_DEPENDENCIES];
 	for(i = 0; i <= n; i++){
@@ -139,6 +136,11 @@ int execute_command(target_t targets[], int array_pos, char* cmd){
 		}
 	}
 	if(comparison == 2 || !does_file_exist(target)) {
+		printf("Executing command: ");
+		for(i=0;i<=n;i++) {
+			printf("%s ", arr[i]);
+		}
+		printf("\n");
 		execvp(file, argv);
 
 		printf("exec failed\n");
@@ -168,7 +170,6 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 			else {
 				int status;
 				wait(&status);
-				printf("The status is: %d \n", WEXITSTATUS(status));
 				if(status > 0){
 					printf("The command %s for target %s failed with status code  %d.\n", cmd, targets[array_pos].TargetName,
 							status);
@@ -179,7 +180,7 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 		}
 //			In the case there are more dependencies, change the node we are looking at and evaluate it for dependencies
 		else {
-			printf("%s \n", targets[array_pos].DependencyNames[j]);
+			printf("Building target: %s \n", targets[array_pos].DependencyNames[j]);
 			pid_t childpid, wpid;
 			int status = 0;
 			childpid = fork();
@@ -188,7 +189,6 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 				exit(1);
 			}
 			if (childpid == 0) {
-				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
 				char *dependency = (char*)targets[array_pos].DependencyNames[j];
 				change_target(dependency, Makefile);
 				exit(0); //Return from the child process
@@ -208,7 +208,6 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 //This function will go through the DAG and attempt to find the target that was called for in the command line
 //If successful, it will call check_dependency_list for that target.
 void check_target_list(char* TargetName,target_t targets[], int nTargetCount, char* Makefile){
-	printf("Target was set: %s \n \n", TargetName);
 // Check for where it is in the build file, if the target is not in the build file, complain
 	for(int i = 0; i < nTargetCount; i++){
 		//If the target to start at matches this target, check the dependencies here
@@ -312,7 +311,6 @@ int main(int argc, char *argv[])
   //Phase2: Begins ----------------------------------------------------------------------------------------------------
   /** If a build file is provided**/
   if(fileSet == 1){
-  	    printf("Provided a build file. \n");
 	  if(targetSet){
 			// Find the target passed in, then check its dependencies
 		  check_target_list(TargetName, targets, nTargetCount, Makefile);
@@ -326,7 +324,6 @@ int main(int argc, char *argv[])
   /** If no build file is provided **/
   else{
   	if(targetSet){
-  		printf("Target was set: %s \n \n", TargetName);
 			//Check for where it is in the build file, if the target is not in the build file, complain
 			for(int i = 0; i < nTargetCount; i++){
 				//If the target to start at matches this target, check the dependencies here
