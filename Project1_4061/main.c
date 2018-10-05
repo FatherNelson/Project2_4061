@@ -41,7 +41,7 @@ void show_error_message(char * ExecName)
 }
 
 //Phase1: Warmup phase for parsing the structure here.
-//Show targets will print out the 4 fields of each node in the DAG
+//Show targets will print out the 4 fields of each node in the Dependency graph
 void show_targets(target_t targets[], int nTargetCount)
 {
     printf("%d", nTargetCount);
@@ -68,11 +68,14 @@ void show_targets_error(char* ExecName){
 }
 
 //This function checks the extensions of files, i.e., will give you .o or .c designation.
+/*** This does not seem necessary
 char* check_extension(char *file_to_check){
 	char *ext;
 	ext = strrchr(file_to_check, '.');
 	if (!ext) {
 		/* no extension */
+/***
+
 		printf("this file has no extension\n");
 		return NULL;
 	}
@@ -81,6 +84,9 @@ char* check_extension(char *file_to_check){
 		return ext+1;
 	}
 }
+*/
+
+
 /*
 //***Checks the timestamp of the last modification of a file.
 int check_date(char *file_to_check){
@@ -93,7 +99,7 @@ int check_date(char *file_to_check){
 */
 
 
-//change_target changes the target being built to the one specified.
+//Changes the target being built to the one specified.
 void change_target(char* dependency, char* Makefile){
 	char *file = "./make4061";
 	char *argv[6];
@@ -109,7 +115,7 @@ void change_target(char* dependency, char* Makefile){
 	exit(0);
 }
 //Separates a command string into an array of strings. Base is the array we want split, target is the array we are
-//modifying in the function. Also will return the number of words in the command string.
+// inserting these command strings into. Returns the number of words in the command string.
 int getWords(char *base, char target[10][20])
 {
 	int n=0,i,j=0;
@@ -130,8 +136,9 @@ int getWords(char *base, char target[10][20])
 	return n;
 
 }
-//Once you run out of dependencies, you launch the command for the parent node. This function will execute the command
-//that the target must.
+//Once you run out of dependencies, you execute the command for the parent node.
+// This function will execute the target at the given array position.
+// This position is assumed to belong to the parent node.
 int execute_command(target_t targets[], int array_pos, char* cmd){
 	int n; //number of words
 	int i; //loop counter
@@ -141,25 +148,17 @@ int execute_command(target_t targets[], int array_pos, char* cmd){
 	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
 
 	n=getWords(str,arr); //Parse the command string into digestible chunks so that we can call its' command.
-	/** This block prints out the command strings**/
+	/** prints out the command strings**/
 	printf("START OF COMMAND STRING\n");
 	for(i=0;i<=n;i++)
-		printf("%s\n",arr[i]);
-	printf("END OF COMMAND STRING\n");
+		printf("%s ",arr[i]); //*** Switched the \n character for a space, so the command prints out normally
+	printf("\nEND OF COMMAND STRING\n");
 	const char *file = arr[0];
-	//***printf("I am the value of file %s\n", file);
 	char *argv[MAX_DEPENDENCIES];
 	for(i = 0; i <= n; i++){
 		if(strlen(arr[i]) > 0){
 			argv[i] = arr[i];
-//***			printf("I am the value of arri %s\n", arr[i]);
-//***			printf("I am the value of argvi %s\n", argv[i]);
 		}
-		/*** Part of dev, remove later**/
-		//***else{
-			//***printf("I am not a string\n");
-			//***break;
-		//***}
 	}
 	argv[i] = NULL;
 //***	char *file_extension =check_extension(argv[2]);
@@ -180,15 +179,15 @@ int execute_command(target_t targets[], int array_pos, char* cmd){
 		printf("errno is %s\n", strerror(errno));
 	}
 	else{
-		printf("We didn't need to run another process \n");
+		printf("We didn't need to run another process \n");//*** probably don't need to say this
 	}
 	exit(0);
 }
-//A function to check the dependency list of any node given the list of targets and where the current node being checked
-// is in the graph
+//A function to check the dependency list of any node given the list of targets
+//and where the current node being checked is in the graph
 int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int nTargetCount){
 	for (int j = 0; j < MAX_DEPENDENCIES; j++) {
-		//If at the end of the dependecy list,
+		//If at the end of the dependency list,
 		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
 			//***TODO: Figure out if this is an unsafe way to check the end of the array
 			//***printf("I have checked all of my dependencies\n");
@@ -221,7 +220,7 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 			childpid = fork();
 			if (childpid == -1) {
 				printf("I failed to fork");
-				return 0;
+				return 0; //*** Should exit whole program here
 			}
 			if (childpid == 0) {
 				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
@@ -230,12 +229,12 @@ int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int
 				exit(0); //Return from the child process
 			}
 			else {
-//				while ((wpid = wait(&status)) > 0);
+//***				while ((wpid = wait(&status)) > 0);
 				wait(0); // wait for the child process to finish
-				printf("My child is done running\n");
+				printf("My child is done running\n"); //*** probaby also not necessary
 				printf("I am the node rooted at %s\n", targets[array_pos].TargetName);
 				targets[array_pos].Status = 1; //Writes the status of the root
-//				show_status(nTargetCount, targets);
+//***				show_status(nTargetCount, targets);
 			}
 		}
 	}
@@ -306,7 +305,6 @@ int main(int argc, char *argv[])
 	  		  temp = strdup(optarg);
 	  		  strcpy(Makefile, temp);  // here the strdup returns a string and that is later copied using the strcpy
 	  		  free(temp);	//need to manually free the pointer
-//	  		  printf(Makefile);
 	  		  fileSet = 1; //Sets variable that lets us know a file was chosen
 	  		  break;
 
@@ -401,7 +399,7 @@ int main(int argc, char *argv[])
 			}
 			/* If there is a problem with the target name, we will display an error*/
 			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
-//				TODO: if not the first target passed, we should be running the command for the node here.
+//***				TODO: if not the first target passed, we should be running the command for the node here.
 //				printf("%s has no dependencies\n", TargetName);
 				//show_targets_error(TargetName);
 				break;
