@@ -24,7 +24,6 @@ target_t *targets_ext;
 /*-------------------------------------------------------HELPER FUNCTIONS PROTOTYPES---------------------------------*/
 void show_error_message(char * ExecName);
 
-//Write your functions prototypes here
 void show_targets(target_t targets[], int nTargetCount);
 /*-------------------------------------------------------END OF HELPER FUNCTIONS PROTOTYPES--------------------------*/
 
@@ -39,225 +38,6 @@ void show_error_message(char * ExecName)
 	fprintf(stderr, "-f FILE\t\tRead FILE as a makefile.\n");
 	fprintf(stderr, "-h\t\tPrint this message and exit.\n");
 	exit(0);
-}
-
-//Write your functions here
-//Logs an error message
-void show_targets_error(char* ExecName){
-	fprintf(stderr, "Target %s does not exist. Please enter a valid build target \n", ExecName);
-	exit(0);
-}
-
-
-//This function checks the extensions of files, i.e., will give you .o or .c designation.
-char* check_extension(char *file_to_check){
-	char *ext;
-	ext = strrchr(file_to_check, '.');
-	if (!ext) {
-		/* no extension */
-		printf("this file has no extension\n");
-		return NULL;
-	}
-	else {
-		printf("extension is %s\n", ext + 1);
-		return ext+1;
-	}
-}
-
-//Checks the timestamp of the last modification of the file.
-int check_date(char *file_to_check){
-	printf("I am checking the date of file %s\n", file_to_check);
-	char *date = "date";
-	struct stat stbuf;
-	stat(file_to_check, &stbuf);
-	return (int)stbuf.st_atime;
-}
-
-
-
-//This function makes you switch the target you are looking at. This is dependent on our implementation so we may
-//hard code the vector as we did here.
-void change_target(char* dependency, char* Makefile){
-	char *file = "./make4061";
-	char *argv[6];
-	argv[0] = "./make4061";
-	argv[1] = "-f";
-	argv[2] = Makefile;
-	argv[3] = dependency;
-	argv[4] = NULL;
-
-	if(execvp(file, argv)<0){ //This will run "ls -la" as if it were a command
-		printf("exec failed");
-	}
-	exit(0);
-}
-//Separates a command string into an array of strings. Base is the array we want split, target is the array we are
-//outputting from the function
-int getWords(char *base, char target[10][20])
-{
-	int n=0,i,j=0;
-
-	for(i=0;TRUE;i++)
-	{
-		if(base[i]!=' '){
-			target[n][j++]=base[i];
-		}
-		else{
-			target[n][j++]='\0';//insert NULL
-			n++;
-			j=0;
-		}
-		if(base[i]=='\0')
-			break;
-	}
-	return n;
-
-}
-//Once you run out of dependencies, you launch the command for the parent node. This function will execute the command
-//that the target must.
-int execute_command(target_t targets[], int array_pos, char* cmd){
-	int n; //number of words
-	int i; //loop counter
-	int ctime; //Gives the last modification date of the c file
-	int otime; //Gives the last modification date of the o file
-	char *str= cmd; //The actual command passed to us after verifying the other files are built.
-	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
-
-	n=getWords(str,arr); //Parse the command string into digestible chunks so that we can call its' command.
-	/** This block prints out the command strings**/
-	printf("START OF COMMAND STRING\n");
-	for(i=0;i<=n;i++)
-		printf("%s\n",arr[i]);
-	printf("END OF COMMAND STRING\n");
-	const char *file = arr[0];
-	printf("I am the value of file %s\n", file);
-	char *argv[MAX_DEPENDENCIES];
-	for(i = 0; i <= n; i++){
-		if(strlen(arr[i]) > 0){
-			argv[i] = arr[i];
-//			printf("I am the value of arri %s\n", arr[i]);
-//			printf("I am the value of argvi %s\n", argv[i]);
-		}
-		/** Part of dev, remove later**/
-		else{
-			printf("I am not a string\n");
-			break;
-		}
-	}
-	argv[i] = NULL;
-//	char *file_extension =check_extension(argv[2]);
-	char *target = (char*) targets[array_pos].TargetName; // Set the target for time comparisons (target we are building)
-	int comparison = 0; // Check to see if a dependency must be built.
-	for(int i = 0; i < targets[array_pos].DependencyCount; i++){
-		comparison = compare_modification_time(target, targets[array_pos].DependencyNames[i]);
-		if(comparison == 2){
-			break;
-		}
-	}
-//	compare_datetime(argv[2], file_extension);
-	if(comparison == 2 || !does_file_exist(target)) {
-		execvp(file, argv);
-		// If here, exec failed
-		printf("exec failed\n");
-		printf("errno is %s\n", strerror(errno));
-	}
-	else{
-		printf("We didn't need to run another process \n");
-	}
-	exit(0);
-}
-//A function to check the dependency list of any node given the list of targets and where the current node being checked
-// is in the graph
-int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int nTargetCount){
-	for (int j = 0; j < MAX_DEPENDENCIES; j++) {
-//		printf("%d \n", array_pos);
-		//Indicates that we are at the end of the dependency list
-		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
-			//TODO: Figure out if this is an unsafe way to check the end of the array
-//				printf("%s\n", targets[i].Command);
-			printf("I have checked all of my dependencies\n");
-			char *cmd = targets[array_pos].Command;
-			pid_t childpid,wpid;
-			int status = 0;
-			childpid = fork();
-			if (childpid == -1) {
-				printf("I failed to fork");
-				exit(1);
-			}
-			if (childpid == 0) {
-				execute_command(targets, array_pos, cmd);
-				exit(0); //Return from the child process
-			}
-			else {
-				int status;
-				wait(&status);
-				printf("The status is: %d \n", WEXITSTATUS(status));
-				if(status > 0){
-					printf("The command %s for target %s failed with status code  %d.\n", cmd, targets[array_pos].TargetName,
-							status);
-					exit(1);
-				}
-			}
-			break;
-		}
-//			In the case there are more to the dependency list, change the node we are looking at and evaluate it for
-//          dependencies
-		else {
-			printf("%s \n", targets[array_pos].DependencyNames[j]);
-//				TODO: We need to branch here to running ./make4061 specificTarget, Better logging statements plz
-			pid_t childpid, wpid;
-			int status = 0;
-			childpid = fork();
-			if (childpid == -1) {
-				printf("I failed to fork");
-				return 0;
-			}
-			if (childpid == 0) {
-				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
-				char *dependency = (char*)targets[array_pos].DependencyNames[j];
-				change_target(dependency, Makefile);
-				exit(0); //Return from the child process
-			}
-			else {
-//				while ((wpid = wait(&status)) > 0);
-//				wait(0); // wait for the child process to finish
-				int status;
-				wait(&status);
-//				printf("The status is: %d \n", WEXITSTATUS(status));
-				if(status > 0){
-//					printf("The command process failed with status code %d.\n", status);
-					exit(1);
-				}
-				printf("My child is done running\n");
-				printf("I am the node rooted at %s\n", targets[array_pos].TargetName);
-				targets[array_pos].Status = 1; //Writes the status of the root
-//				show_status(nTargetCount, targets);
-			}
-		}
-	}
-	return 0;
-}
-
-//This function will go through the code base and attempt to find any target that was called for in the command line
-void check_target_list(char* TargetName,target_t targets[], int nTargetCount, char* Makefile){
-	printf("Target was set: %s \n \n", TargetName);
-//  		Check for where it is in the build file, if the target is not in the build file, complain
-	for(int i = 0; i < nTargetCount; i++){
-//			TODO: Resolve the type conflict between targets[i].TargetName and TargetName
-
-		//If the target to start at matches this target, check the dependencies here
-		if(strcmp(targets[i].TargetName, TargetName) == 0){
-			printf("Found it in the array at position %d \n \n", i);
-			check_dependency_list(targets,i, Makefile,nTargetCount);
-//			show_status(nTargetCount, targets_ext);
-			return;
-		}
-			/* If there is a problem with the target name, we will display an error*/
-		else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount){
-			show_targets_error(TargetName);
-			return;
-		}
-	}
 }
 
 //Phase1: Warmup phase for parsing the structure here. Do it as per the PDF (Writeup)
@@ -281,31 +61,180 @@ void show_targets(target_t targets[], int nTargetCount)
     return;
 }
 
-//This function merely shows the status of each node whether that is a date object or simply an integer
-int show_status(int nTargetCount, target_t targets[] ){
-	for(int i = 0; i < nTargetCount; i++){
-		printf("I am target %s and I have status %d\n", targets[i].TargetName, targets[i].Status);
+// Write your functions here
+// Logs an error message when a target name is not found in the given makefile
+void show_targets_error(char* ExecName){
+	fprintf(stderr, "Target %s does not exist. Please enter a valid build target \n", ExecName);
+	exit(0);
+}
+
+//This function makes you switch the target you are looking at. This is dependent on our implementation so we may
+//hard code the vector as we did here.
+void change_target(char* dependency, char* Makefile){
+	char *file = "./make4061";
+	char *argv[6];
+	argv[0] = "./make4061";
+	argv[1] = "-f";
+	argv[2] = Makefile;
+	argv[3] = dependency;
+	argv[4] = NULL;
+
+	if(execvp(file, argv)<0){ // Attempts to execute make4061 with new target
+		printf("exec failed");
+	}
+	exit(0);
+}
+
+//Separates a command string into an array of strings. Base is the array we want split, target is the array we are
+//inserting these commadns into.  Returns number of words in the command string
+int getWords(char *base, char target[10][20])
+{
+	int n=0,i,j=0;
+
+	for(i=0;TRUE;i++)
+	{
+		if(base[i]!=' '){
+			target[n][j++]=base[i];
+		}
+		else{
+			target[n][j++]='\0';//insert NULL
+			n++;
+			j=0;
+		}
+		if(base[i]=='\0')
+			break;
+	}
+	return n;
+}
+
+//Once you run out of dependencies, you execute the command for the parent node. This function will execute
+//the target's command
+int execute_command(target_t targets[], int array_pos, char* cmd){
+	int n; //number of words
+	int i; //loop counter
+	int ctime; //Gives the last modification datetime of the c file
+	int otime; //Gives the last modification datetime of the o file
+	char *str= cmd; //The actual command passed to us after verifying the other files are built.
+	char arr[10][20] = {'\0'}; //Initialized with null chars to ensure the program memory is empty.
+
+	n=getWords(str,arr); //Parse the command string into digestible chunks so that we can call its' command.
+	printf("Executing command: ");
+	for(i=0;i<n;i++) {
+		printf("%s ", arr[i]);
+	}
+	const char *file = arr[0];
+	char *argv[MAX_DEPENDENCIES];
+	for(i = 0; i <= n; i++){
+		if(strlen(arr[i]) > 0){
+			argv[i] = arr[i];
+		}
+	}
+	argv[i] = NULL;
+	char *target = (char*) targets[array_pos].TargetName; // Set the target for time comparisons (target we are building)
+	int comparison = 0; // Check to see if the build command must be run.
+	for(int i = 0; i < targets[array_pos].DependencyCount; i++){
+		comparison = compare_modification_time(target, targets[array_pos].DependencyNames[i]);
+		if(comparison == 2){
+			break;
+		}
+	}
+	if(comparison == 2 || !does_file_exist(target)) {
+		execvp(file, argv);
+
+		printf("exec failed\n");
+		printf("errno is %s\n", strerror(errno));
+	}
+	exit(0);
+}
+// A function to check the dependency list of any node given the list of targets
+// and where the current node being checked is in the graph.  Executes the command
+// if there are no dependencies.
+int check_dependency_list(target_t targets[], int array_pos, char* Makefile, int nTargetCount){
+	for (int j = 0; j < MAX_DEPENDENCIES; j++) {
+		// If we are at the end of the dependency list
+		if (strlen(targets[array_pos].DependencyNames[j]) < 1) {
+			char *cmd = targets[array_pos].Command;
+			pid_t childpid,wpid;
+			int status = 0;
+			childpid = fork();
+			if (childpid == -1) {
+				printf("Target %s failed to fork.\n", targets[array_pos].TargetName);
+				exit(1);
+			}
+			if (childpid == 0) {
+				execute_command(targets, array_pos, cmd);
+				exit(0); //Return from the child process
+			}
+			else {
+				int status;
+				wait(&status);
+				printf("The status is: %d \n", WEXITSTATUS(status));
+				if(status > 0){
+					printf("The command %s for target %s failed with status code  %d.\n", cmd, targets[array_pos].TargetName,
+							status);
+					exit(1);
+				}
+			}
+			break;
+		}
+//			In the case there are more dependencies, change the node we are looking at and evaluate it for dependencies
+		else {
+			printf("%s \n", targets[array_pos].DependencyNames[j]);
+			pid_t childpid, wpid;
+			int status = 0;
+			childpid = fork();
+			if (childpid == -1) {
+				printf("Target %s failed to fork.\n", targets[array_pos].TargetName);
+				exit(1);
+			}
+			if (childpid == 0) {
+				printf("Execute: ./make4061 %s \n", targets[array_pos].DependencyNames[j]);
+				char *dependency = (char*)targets[array_pos].DependencyNames[j];
+				change_target(dependency, Makefile);
+				exit(0); //Return from the child process
+			}
+			else {
+				int status;
+				wait(&status);
+				if(status > 0){
+					exit(1);
+				}
+			}
+		}
 	}
 	return 0;
 }
 
+//This function will go through the DAG and attempt to find the target that was called for in the command line
+//If successful, it will call check_dependency_list for that target.
+void check_target_list(char* TargetName,target_t targets[], int nTargetCount, char* Makefile){
+	printf("Target was set: %s \n \n", TargetName);
+// Check for where it is in the build file, if the target is not in the build file, complain
+	for(int i = 0; i < nTargetCount; i++){
+		//If the target to start at matches this target, check the dependencies here
+		if(strcmp(targets[i].TargetName, TargetName) == 0){
+			check_dependency_list(targets,i, Makefile,nTargetCount);
+			return;
+		}
+			/* If there is a problem with the target name, complain*/
+		else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount){
+			show_targets_error(TargetName);
+			return;
+		}
+	}
+}
 
 /*-------------------------------------------------------END OF HELPER FUNCTIONS-------------------------------------*/
 
 
 /*-------------------------------------------------------MAIN PROGRAM------------------------------------------------*/
-//Main commencement
 int main(int argc, char *argv[])
 {
-	printf("argc has value %d\n", argc);
-	printf("first part of command is %s\n", argv[0]);
-	printf("second part of the command %s\n",argv[1]);
 	target_t targets[MAX_NODES];
 	int nTargetCount = 0;
 
-  /* Variables you'll want to use */
   char Makefile[64] = "Makefile";
-  char TargetName[64];
+  char TargetName[64];						// The target we are currently executing on
 
   /* Declarations for getopt */
   extern int optind;
@@ -327,9 +256,8 @@ int main(int argc, char *argv[])
 	  {
 	  	  case 'f':
 	  		  temp = strdup(optarg);
-	  		  strcpy(Makefile, temp);  // here the strdup returns a string and that is later copied using the strcpy
+	  		  strcpy(Makefile, temp);  // here the strcpy returns a string and that is later copied using the strcpy
 	  		  free(temp);	//need to manually free the pointer
-//	  		  printf(Makefile);
 	  		  fileSet = 1; //Sets variable that lets us know a file was chosen
 	  		  break;
 
@@ -345,13 +273,11 @@ int main(int argc, char *argv[])
   if(argc > 1)   //Means that we are giving more than 1 target which is not accepted
   {
 	  show_error_message(argv[0]);
-	  return -1;   //This line is not needed
   }
 
   /* Init Targets */
   memset(targets, 0, sizeof(targets));   //initialize all the nodes first, just to avoid the valgrind checks
 
-  /** This block is breaking the build**/
    //Parse graph file or die, This is the main function to perform the toplogical sort and hence populate the structure
   if((nTargetCount = parse(Makefile, targets)) == -1)  //here the parser returns the starting address of the array of the structure. Here we gave the makefile and then it just does the parsing of the makefile and then it has created array of the nodes
 	  return -1;
@@ -359,7 +285,6 @@ int main(int argc, char *argv[])
 
 
   //Phase1: Warmup-----------------------------------------------------------------------------------------------------
-  //Parse the structure elements and print them as mentioned in the Project Writeup
   /* Comment out the following line before Phase2 */
 //  show_targets(targets, nTargetCount);
   //End of Warmup------------------------------------------------------------------------------------------------------
@@ -369,12 +294,11 @@ int main(int argc, char *argv[])
    * If target is not set, set it to default (first target from makefile)
    */
   if(argc == 1) {
-//  	    TODO: Fix this area potentially, we are getting a failure when the target is listed before the -f flag
-      strcpy(TargetName, argv[optind]);    // here we have the given target, this acts as a method to begin the building
+      strcpy(TargetName, argv[optind]);
       targetSet = 1;
   }
   else {
-	  strcpy(TargetName, targets[0].TargetName);// default part is the first target
+	  strcpy(TargetName, targets[0].TargetName);  // defaults to first target
   }
   /*
    * Now, the file has been parsed and the targets have been named.
@@ -386,69 +310,41 @@ int main(int argc, char *argv[])
    */
 
   //Phase2: Begins ----------------------------------------------------------------------------------------------------
-  /*Your code begins here*/
-//
   /** If a build file is provided**/
   if(fileSet == 1){
   	    printf("Provided a build file. \n");
-	  //  	TODO: Unsafe way of checking the default, must be improved
 	  if(targetSet){
+			// Find the target passed in, then check its dependencies
 		  check_target_list(TargetName, targets, nTargetCount, Makefile);
 	  }
 	  else {
-			/**If no target is provided run from the very first node **/
+			// Default to first target
 			check_dependency_list(targets, 0, Makefile, nTargetCount);
-//		    show_status(nTargetCount, targets);
 	  }
   }
 
   /** If no build file is provided **/
   else{
-//  	show_targets(targets, nTargetCount);
-//  	TODO: Unsafe way of checking the default, must be improved
   	if(targetSet){
   		printf("Target was set: %s \n \n", TargetName);
-		//Check for where it is in the build file, if the target is not in the build file, complain
-		for(int i = 0; i < nTargetCount; i++){
-			printf("%s \n",targets[i].TargetName);
-			printf("%s \n", TargetName);
-			printf("\n");
-		//TODO: Resolve the type conflict between targets[i].TargetName and TargetName
-
-			//If the target to start at matches this target, check the dependencies here
-			if(strcmp(targets[i].TargetName, TargetName) == 0){
-			//printf("Found it in the array at position %d \n", i);
-				check_dependency_list(targets,i, Makefile,nTargetCount);
-//				show_status(nTargetCount, targets);
-			}
-			/* If there is a problem with the target name, we will display an error*/
-			else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
-//				TODO: if not the first target passed, we should be running the command for the node here.
-//				printf("%s has no dependencies\n", TargetName);
-				//show_targets_error(TargetName);
-				break;
-			}
+			//Check for where it is in the build file, if the target is not in the build file, complain
+			for(int i = 0; i < nTargetCount; i++){
+				//If the target to start at matches this target, check the dependencies here
+				if(strcmp(targets[i].TargetName, TargetName) == 0){
+					check_dependency_list(targets,i, Makefile,nTargetCount);
+				}
+				// If there is a problem with the target name, complain
+				else if(strcmp(targets[i].TargetName, TargetName) != 0 && i == nTargetCount-1){
+					show_targets_error(TargetName);
+					break;
+				}
+	  	}
 		}
-  	}
   	else {
-	    //Should be to nTargetCount in the final version, it is set to one for testing
-
-//		    printf("\nBack in the loop at the bottom \n");
-//		    printf("\n%s \n", targets[0].TargetName);
-//		    printf("Checking targets as I did at the outset \n");
-//		    printf("Name of target is above here \n");
-//	    We are told we will have at most ten dependencies, so hard code for now
 			check_dependency_list(targets, 0, Makefile, nTargetCount);
-//			show_status(nTargetCount, targets);
 
     }
   }
-//  TODO: Write the state of the targets to some global state that is mutable here only, I think another file
-
-//  show_status(nTargetCount, targets);
-
-
-
 
   /*End of your code*/
   //End of Phase2------------------------------------------------------------------------------------------------------
