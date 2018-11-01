@@ -1,0 +1,107 @@
+IPC: Shared memory
+
+He said that they will accept 2 ends. You should get points for this answer
+	- I already saw multiple TA's and I have not been given this answer
+Buffering takes up memory is what I wrote
+	- I already saw the TA's and was told that this was a buffer overflow.
+1D: If you have the child wait for the parent and do this properly, you should have only lost two points
+	- I already saw the TA's and was told that my answer was incorrect
+1D: If you switched roles of parent, child, this is incorrect, but we will have to accept this
+	- You are not supposed to switch the roles of the parent and the child
+
+
+Shared memory in UNIX
+
+	Shared memory allows two or more processes to share a segment of physical memory
+
+	Why is this the most efficient form of IPC?
+		Shared addresses, can directly access the same hard memory rather than needing two searches. No
+		system calls at any time except creation of the shared segment.
+
+	Why must it be used carefully?
+		Easy to cause data corruption
+
+	Which one should you use?
+		Depends on the application
+
+	Shared/Dynamic libraries
+		.so, DLL, libc
+	Memory-mapped files
+	Fork: copy-on-write (sharing code)
+
+
+Systems programming:
+	We are "data sharing" instead
+
+Shared memory creation:
+
+#include <sys/shm.h>
+
+int shmget(key_t key, size_t size, int permflags)
+
+permflags: Permissions are the same as in msg q's. Execute not used, create if not there
+shmget: Returns segment id for subsequent calls
+**These can outlive the creating process**
+
+void* shmat (int shmid, const void *dadir, int shmflags)
+	Each process must attach to their segment (extends their VAS)
+
+Detach form shared-memory segment
+
+int shmdt(void *arg)
+//arg is return ptr from shmat
+
+This removes the shared memory segment
+shmctl(shmid, IPC_RMID, 0)
+//
+
+SM RECAP:
+
+Create a shared memory segment, do it once and return the handle afterwards
+Each process must attach to the segment (shmat)
+	Using the handle
+Use the returned memory address: r/w to share or communicate
+
+1.shmget => id
+2.shmat => ptr
+3.shmdt
+4.shmctl
+
+
+Buffer
+Producers
+Consumers
+	All over computer systems
+
+Shared buffer
+#define MAX_ITEMS
+//Define a buffer struct
+//Create a function to remove an item from the buffer
+//Create a function to create an item in the buffer
+
+/**Program that uses a buffer**/
+void main(){
+	int BUFFER_KEY =100;
+	buffer_t *b;
+	item_t item;
+	shmid = shmget(BUFFER_KEY, sizeof(buffer_t), 0600|IPC_CREAT);
+	b = (buffer_t *) shmat(shmid, 0, 0);
+	b-> next_slot_to_store = 0;
+	b-> next_slot_to_retrieve = 0;
+	//Now you can do whatever you want to you buffer
+	produce_stuff();
+	remove_thing();
+}
+
+How do we avoid race conditions with shared memory?
+
+Project 2
+	Make sure you make an early update to the project to the TA's
+	Multi-party chat
+
+	Write a server program
+		-Need a main server, and a bunch of child processes, close all unneeded ends (IMPORTANT)
+	We are given a server and the user processes which will exist on the same machine
+		-Write user program (Connect to server)
+	Server, run first
+		-setup_connection(server_ID)

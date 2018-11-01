@@ -1,0 +1,61 @@
+                           __________________
+
+                            Rec 08 QUESTIONS
+                           __________________
+
+
+
+PROBLEM 1 `em_server_mq.c' and `em_server_mq.c'
+===============================================
+
+A
+~
+
+  Examine the source code for `em_server_mq.c' and
+  `em_client_mq.c'. Describe the lines of code which are used to
+  establish the message queues used for communication. How many message
+  queues are there?
+
+
+B
+~
+
+  Describe the sending and receiving functions used in the server to put
+  messages onto the queue. Focus your attention on the server side
+  first. Describe each argument of the send/receive functions and its
+  purpose. You may wish to consult the textbook or manual page for the
+  functions to get more information.
+
+
+C
+~
+
+  Describe the protocol that appears to be used for communication. What
+  steps are taken by a client to make a request for an email address
+  lookup? How does the server respond? You may find it useful to use the
+  letters associated with print statements like "A" and "D". Note any
+  operations that might happen in an arbitrary order.
+
+
+D
+~
+
+  In the Message Queue server/client, potentially many clients are
+  accessing the To-Client queue simultaneously. Describe why there is
+  not a problem in this setting. Look carefully at the arguments used in
+  the `msgrcv()' call in the client.
+
+
+E
+~
+
+  There is NO explicit sleeping in the Message Queue server/client which
+  might indicate it is less efficient as processes busily wait for
+  messages. Do some research on `msgsnd() / msgrcv()' calls to determine
+  if they are busy waiting (polling) or interrupt driven operations.
+
+  Confirm these answers by running `run_simulations_mq.sh' on a large
+  number of client and timing the results. A sample run might be
+  ,----
+  | > time ./run_simulation_mq.sh 1000 > ~/tmp/xxx
+  `----

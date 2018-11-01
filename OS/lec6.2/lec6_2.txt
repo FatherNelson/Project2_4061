@@ -1,0 +1,122 @@
+Default I/O behavior is blocking, in Async applications we defs want there to be non-blocking plumbing.
+
+Since pipe is a file, you can change its attributes
+
+Using fcntl.h, you can change attributes of a file:
+
+#include <fcntl.h>
+int fcntl (int fd, int cmd, ...);
+int ends[2], flags, nread;
+pipe (ends);
+flags = fcntl (fd, F_GETFL, 0);
+fcntl (ends[0], F_SETFL, flags | O_NONBLOCK); ...
+nread = read (ends[0], buf, size);
+// if nothing to read, returns -1, errno set to EAGAIN
+
+EAGAIN essentially means "please come back later"
+
+struct message_t{
+	int x;
+	int y;
+	char str[20]
+}
+
+message_t m1, m2;
+int ends[2];
+pipe(ends);
+write(ends[1], (void*)&m2, sizeof(message_t))
+read(ends[0], (void*)&m1, sizeof(message_t))
+
+
+pipe (ends);
+if (childpid = fork ()) == 0) {
+     dup2(ends[1], 1);
+     // close ends[0] and ends[1]
+     execl(“/bin/ps”, ....);
+} else {
+dup2(ends[0], 0);
+// close ends[0] and ends[1] execl(“/bin/grep”, ...);
+}
+
+Pipes make it so that programs can exist on there own, yet still communicate
+
+pipe (ends);
+if (childpid = fork ()) == 0) {
+     dup2(ends[1], 1);
+     // close ends[0] and ends[1]
+     execl(“/bin/ps”, ....);
+} else {
+dup2(ends[0], 0);
+// close ends[0] and ends[1] execl(“/bin/grep”, ...);
+}
+
+Files: Share file system, slow
+Pipes: related processes, stream, hard to send point to point messages
+
+Unix uses a mailbox-like mechanism
+	1. Message Queue
+	2. Sender puts message in a queue
+	3. Receiver pulls it from the queue
+
+What are the advantages of a queue?
+	1. Larger than pipe buffer
+	2. Unrelated processes can share queue
+	3. Persistent, can outlive the process that created it
+	4. Meant for discrete messages, not an infinite stream
+	5. Limited to running on the same machine.
+
+int msgsnd (int qid,const void *message, size_t size, int flags)
+	-Message buffer must be allocated
+int msgrcv (int qid,void *message,  size_t size, long msg_type, int flags)
+	-Only 1 useful flag
+	-msg_types are defined by the author of the program
+
+Both rx/tx return an error if the queue no longer exists
+
+Message Data type:
+
+struct  mymsg_t{
+	long mtype; //Used for tag selection
+	msg_contents_t mtext; // Just a bunch of contiguous bytes
+}
+
+If the msgtype is 0, it will return the oldest message (FIFO)
+IF the msg_type is less than zero, it will return message with smallest tag up to abs(x)
+
+
+Metadata
+
+Pass arbitrary data/messages:
+
+This is easy:
+struct mymsg_t {
+	long mtype;
+	int x;
+	int y;
+	...
+}
+RESTRICTION: NO embedded pointers
+
+Remove a Queue
+
+
+msgctl (int qid, IPC_RMID, 0);
+
+shell> ipcs
+shows any message queues
+
+Shared memory in UNIX
+
+Shared-memory allows two or more processes to share a segment of physical memory
+IPC => read/write shared memory locations
+P1: store x, P2: load x
+
+Why is this the most efficient form of IPC?
+	Because there is no lookup, avoid copying, uses less memory, no system calls being made
+
+Why must it be used carefully?
+	If you use system calls, system calls will protect you from mistakes for the most part. If both are
+	getting at the same memory location, you could easily get file corruption. 
+Which one should you use?
+	Mostly personal preference
+

@@ -246,7 +246,8 @@ int main(int argc, char *argv[])
   int fileSet = 0;
   int targetSet = 0;
 
-  //Getopt function is used to access the command line arguments. However there can be arguments which may or may not need the parameters after the command
+  //Getopt function is used to access the command line arguments. However there can be arguments
+  // which may or may not need the parameters after the command
   //Example -f <filename> needs a finename, and therefore we need to give a colon after that sort of argument
   //Ex. f: for h there won't be any argument hence we are not going to do the same for h, hence "f:h"
   while((ch = getopt(argc, argv, format)) != -1)

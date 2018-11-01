@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include "comm.h"
 #include "util.h"
-#define MAX_CMD_LENGTH 100
+
 /* -----------Functions that implement server functionality -------------------------*/
 
 /*
@@ -76,8 +76,15 @@ int list_users(int idx, USER * user_list)
 int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_child, int pipe_to_parent)
 {
 	// populate the user_list structure with the arguments passed to this function
+	USER* next_user = (USER*) malloc(sizeof(USER));
+	next_user->m_pid = pid;
+	strcpy(next_user->m_user_id,user_id);
+	next_user->m_fd_to_server = pipe_to_parent;
+	next_user->m_fd_to_user = pipe_to_child;
+	int place_for_next_user  = find_empty_slot(user_list);
+	user_list[place_for_next_user] = *next_user;
 	// return the index of user added
-	return 0;
+	return place_for_next_user;
 }
 
 /*
@@ -226,6 +233,38 @@ void init_user_list(USER * user_list) {
 
 /* ---------------------End of the functions that implementServer functionality -----------------*/
 
+void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[]){
+	if(read(0, cmd_buf, MAX_CMD_LENGTH) > 0) {
+		read(STDIN_FILENO, cmd_buf, MAX_CMD_LENGTH);
+		if (cmd_buf != "") {
+			printf("%s \n", cmd_buf);
+		}
+		printf("cmd_buf has a value of %s \n", cmd_buf);
+		/**This block should trim any excess char. Make sure to take care of excess malloc **/
+		char* tmp = (char*) malloc(strlen(cmd_buf)-1);
+		strncpy(tmp, cmd_buf, strlen(cmd_buf)-1);
+		// This value is the value that indicates what position in the commands array in util.c the command was
+		// found at
+		int found = find_command_type(tmp);
+		//In this block the decision as to what the input meant is done here.
+		if(found == 0){
+			printf("List command was entered");
+			list_users(-1, user_list); //See definition of list_users, must be called with -1 to make sense.
+		}
+		else if(found == 5){
+			printf("No valid command was entered. Here is the list of acceptable commands for the admin: "
+			       "\\list, \\kick, \\p2p, \\seg, \\exit");
+		}
+		//the commands array the command typed in was found at. We have a 100char limit on command strings.
+		printf("%d \n", found);
+		close(pipe_SERVER_writing_to_child[0]); //Prevent reading from pipe while writing
+		write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_CMD_LENGTH);
+		//Take care of the malloc we made to make the casting work, regardless of what the stdin term char is
+		free(tmp);
+		//Should always print the admin prompt before exiting to get ready for the next input
+		print_prompt("admin");
+	}
+}
 
 /* ---------------------Start of the Main function ----------------------------------------------*/
 int main(int argc, char * argv[])
@@ -241,31 +280,37 @@ int main(int argc, char * argv[])
 	print_prompt("admin");
 
 	//
+
+	int pipe_SERVER_reading_from_child[2];
+	int pipe_SERVER_writing_to_child[2];
+	if(pipe(pipe_SERVER_reading_from_child)){
+		perror("Did not create a pipe for reading from a child\n");
+	} // Make the read from child into a pipe
+	if(pipe(pipe_SERVER_writing_to_child)){
+		perror("Did not create a pipe for writing to a child\n");
+	}// Make the write to child into a pipe
+
 	while(1) {
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
-		char cmd_buf[MAX_CMD_LENGTH]; // holds the command string
+		char cmd_buf[MAX_CMD_LENGTH] = "\0"; // holds the command string. Always trims it to nulls before the next run
 		// Handling a new connection using get_connection
-		int pipe_SERVER_reading_from_child[2];
-		int pipe_SERVER_writing_to_child[2];
 		char user_id[MAX_USER_ID];
+		close(pipe_SERVER_reading_from_child[1]);
+		char buf[MAX_CMD_LENGTH];
+		read(pipe_SERVER_reading_from_child[0],buf,MAX_CMD_LENGTH);
+		if(buf != "") {
+			printf("%s", buf);
+		}
 		// Check max user and same user id
 
 		// Child process: poll users and SERVER
 
 		// Server process: Add a new user information into an empty slot   
 		// poll child processes and handle user commands
+
 		// Poll stdin (input from the terminal) and handle admnistrative command
-		if(read(0, cmd_buf, MAX_CMD_LENGTH) > 0) {
-			read(STDIN_FILENO, cmd_buf, MAX_CMD_LENGTH);
-			if (cmd_buf != "") {
-				printf("%s \n", cmd_buf);
-			}
-			close(pipe_SERVER_writing_to_child[0]); //Prevent reading from pipe while writing
-			if(write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_CMD_LENGTH) < 0){
-				printf("Failed to write to the pipe \n");
-			}
-		}
-	
+		pollSTDIN(cmd_buf, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
+
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 	}
 }

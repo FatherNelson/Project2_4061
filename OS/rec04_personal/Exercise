@@ -1,0 +1,38 @@
+	symlink("chain.h", "ball.h");
+	mkdir("prison", 0777);
+	chdir("prison");
+	if(open("bars.txt", O_CREAT|O_WRONLY, 0777) < 0){
+		printf("Fat fuck is eating again");
+	}
+	link("bars.txt", "warden.txt");
+	symlink("bars.txt", "guard.txt");
+	int hard_fd;
+	int soft_fd;
+	if(open("warden.txt", O_WRONLY, 0777) < 0){
+		printf("The read failed");
+	}
+	else{
+		hard_fd = open("warden.txt", O_WRONLY, 0777);
+	}
+	write(hard_fd, "Hello Dolly", 100);
+	soft_fd = open("guard.txt", O_RDWR, 0777);
+	char buf[100];
+	read(soft_fd, buf, 100);
+	printf("%s\n", buf);
+	rename("bars.txt", "cell.txt");
+	if(open("guard.txt", O_RDWR, 0777)<0){
+		printf("We failed to open");
+	}
+	else {
+		//Attempt to print
+		soft_fd = open("guard.txt", O_RDWR, 0777);
+		char buf[100];
+		read(soft_fd, buf, 100);
+		printf("%s\n", buf);
+	}
+	unlink("guard.txt");
+	unlink("warden.txt");
+	unlink("bars.txt");
+	unlink("cell.txt");
+	chdir("..");
+	rmdir("prison");
