@@ -29,11 +29,21 @@ void main(int argc, char * argv[]) {
 	}
 	else {
 		printf("Successfully connected to server!\n");
+		print_prompt(username);
 	}
 	/* -------------- YOUR CODE STARTS HERE -----------------------------------*/
 //	print_prompt(username);
 //	fcntl(pipe_user_reading_from_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 	while(1) {
+
+		// poll pipe retrieved and print it to sdiout - Retrieve information from the child process
+
+		close(pipe_user_reading_from_server[1]);
+		read(pipe_user_reading_from_server[0], rx_buf, MAX_MSG);
+		if(rx_buf != "\0") {
+			printf("Client received from the server: %s\n", rx_buf);
+		}
+		open(pipe_user_reading_from_server[1], O_WRONLY);
 
 		// Poll stdin (input from the terminal) and send it to server (child process) via pipe
 		print_prompt(username);
@@ -45,14 +55,6 @@ void main(int argc, char * argv[]) {
 		open(pipe_user_writing_to_server[0], O_RDONLY);
 		print_prompt(username);
 
-		// poll pipe retrieved and print it to sdiout - Retrieve information from the child process
-
-		close(pipe_user_reading_from_server[1]);
-		read(pipe_user_reading_from_server[0], rx_buf, MAX_MSG);
-		if(rx_buf != "\0") {
-			printf("Client received from the server: %s\n", rx_buf);
-		}
-		open(pipe_user_reading_from_server[1], O_WRONLY);
 	}
 
 	/* -------------- YOUR CODE ENDS HERE -----------------------------------*/
