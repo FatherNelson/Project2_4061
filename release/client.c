@@ -53,10 +53,8 @@ void main(int argc, char * argv[]) {
 //		printf("wrote to the pipe: %s\n", message);
 		open(pipe_user_writing_to_server[0], O_RDONLY);
 	}
-		
+
 	/* -------------- YOUR CODE ENDS HERE -----------------------------------*/
 }
 
 /*--------------------------End of main for the client --------------------------*/
-
-
