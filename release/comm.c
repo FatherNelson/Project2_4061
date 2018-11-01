@@ -150,7 +150,7 @@ int setup_connection(char * connect_point)
 
 	printf("Wating user's connection.\n");
 	fcntl(g_sfd, F_SETFL, O_NONBLOCK);
-	printf("g_sfd has a value of %d\n", g_sfd);
+//	printf("g_sfd has a value of %d\n", g_sfd);
 }
 
 int get_connection(char * user_id, int pipe_child_writing_to_user[2], int pipe_child_reading_from_user[2])
