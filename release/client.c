@@ -13,7 +13,6 @@
 
 /* -------------------------Main function for the client ----------------------*/
 void main(int argc, char * argv[]) {
-//	fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //This line makes stdin non-blocking
 	int pipe_user_reading_from_server[2], pipe_user_writing_to_server[2];
 //	pipe(pipe_user_reading_from_server);
 //	pipe(pipe_user_writing_to_server);
@@ -33,27 +32,31 @@ void main(int argc, char * argv[]) {
 	}
 	/* -------------- YOUR CODE STARTS HERE -----------------------------------*/
 //	print_prompt(username);
+	fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //This line makes stdin non-blocking
 //	fcntl(pipe_user_reading_from_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 	while(1) {
 
-		// poll pipe retrieved and print it to sdiout - Retrieve information from the child process
-
-		close(pipe_user_reading_from_server[1]);
-		read(pipe_user_reading_from_server[0], rx_buf, MAX_MSG);
-		if(rx_buf != "\0") {
-			printf("Client received from the server: %s\n", rx_buf);
-		}
-		open(pipe_user_reading_from_server[1], O_WRONLY);
 
 		// Poll stdin (input from the terminal) and send it to server (child process) via pipe
-		print_prompt(username);
-		read(0, rx_buf, MAX_MSG);
-		printf("READ DATA\n");
-		close(pipe_user_writing_to_server[0]);
-		write(pipe_user_writing_to_server[1],rx_buf, MAX_MSG);
+//		print_prompt(username);
+		if(read(STDIN_FILENO, rx_buf, MAX_MSG) > 0) {
+			printf("READ DATA\n");
+			close(pipe_user_writing_to_server[0]);
+			write(pipe_user_writing_to_server[1], rx_buf, MAX_MSG);
 //		printf("wrote to the pipe: %s\n", message);
-		open(pipe_user_writing_to_server[0], O_RDONLY);
-		print_prompt(username);
+			open(pipe_user_writing_to_server[0], O_RDONLY);
+			print_prompt(username);
+
+			// poll pipe retrieved and print it to sdiout - Retrieve information from the child process
+		}
+//		close(pipe_user_reading_from_server[1]);
+		if(read(pipe_user_reading_from_server[0], tx_buf, MAX_MSG) > 0) {
+			if (tx_buf != "\0") {
+				printf("Client received from the server: %s\n", tx_buf);
+			}
+			open(pipe_user_reading_from_server[1], O_WRONLY);
+		}
+		
 
 	}
 
