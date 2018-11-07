@@ -93,6 +93,7 @@ int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_chi
 void kill_user(int idx, USER * user_list) {
 	// kill a user (specified by idx) by using the systemcall kill()
 	// then call waitpid on the user
+
 }
 
 /*
@@ -316,6 +317,7 @@ int main(int argc, char * argv[])
 
 	//
 	while(1) {
+		usleep(SLEEP_TIME);
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 
 		// Handling a new connection using get_connection
@@ -346,7 +348,14 @@ int main(int argc, char * argv[])
 				print_prompt("admin");
 			}
 			fcntl(pipe_child_writing_to_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(pipe_child_writing_to_server[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 			fcntl(pipe_child_reading_from_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(pipe_child_reading_from_server[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+			fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 			int pid = fork();
 			/** We want to make sure this user list is known to the server and the child process equally**/
 			// Check max user and same user id
@@ -354,6 +363,7 @@ int main(int argc, char * argv[])
 			// Child process:
 			if (pid == 0) {
 				while(1) {
+					usleep(SLEEP_TIME);
 //			poll users and SERVER
 					//Read from the SERVER process trying to talk to the client
 //					close(pipe_child_reading_from_server[1]);
@@ -364,34 +374,43 @@ int main(int argc, char * argv[])
 //					fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 //					fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 
-					if(read(pipe_child_reading_from_server[0], tmp, MAX_MSG) > 0) {
-						if (tmp != " ") {
-							printf("Child read %s from the server\n", tmp);
-							//This should write to the client, note that the "pipe_SERVER_writing_to_child" now writes to client
-							close(pipe_SERVER_writing_to_child[0]);
-							write(pipe_SERVER_writing_to_child[1], tmp, MAX_MSG);
-							printf("Child wrote %s to the client\n", tmp);
-							close(pipe_SERVER_writing_to_child[1]);
-							open(pipe_SERVER_writing_to_child[0], O_RDONLY);
-							print_prompt("admin");
-						}
+					if(read(pipe_SERVER_writing_to_child[0], tmp, MAX_MSG) > 0){
+						printf("The child process received: %s\n", tmp);
+//						open(pipe_child_reading_from_server[1], O_WRONLY);
+//						close(pipe_child_reading_from_server[0]);
+						write(pipe_child_reading_from_server[1], tmp, MAX_MSG);
+//						open(pipe_child_reading_from_server[0], O_RDONLY);
+//						close(pipe_child_reading_from_server[1]);
+						print_prompt("admin");
 					}
+//					if(read(pipe_child_reading_from_server[0], tmp, MAX_MSG) > 0) {
+//						if (tmp != " ") {
+//							printf("Child read %s from the server\n", tmp);
+//							//This should write to the client, note that the "pipe_SERVER_writing_to_child" now writes to client
+////							close(pipe_SERVER_writing_to_child[0]);
+//							printf("%d\n", write(pipe_SERVER_writing_to_child[1], tmp, MAX_MSG));
+////							close(pipe_SERVER_writing_to_child[1]);
+////							open(pipe_SERVER_writing_to_child[0], O_RDONLY);
+//							char* msg = "";
+//							pread(pipe_SERVER_writing_to_child[0],msg, MAX_MSG,0);
+//							printf("Child wrote %s to the client\n", msg);
+//							print_prompt("admin");
+//						}
+//					}
 //					printf("Got past the first read\n");
 					char tx_buf[MAX_MSG];
 
 //					printf("I am the child process and was called by user: %s\n", user_id);
 					//This will retrieve information from the client to the child process
-					close(pipe_child_writing_to_server[1]);
-					fcntl(pipe_child_writing_to_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 					if (read(pipe_child_writing_to_server[0], tx_buf, MAX_MSG) > 0){
-						printf("Message received from client: %s\n", tx_buf);
-						open(pipe_child_writing_to_server[1], O_WRONLY);
-
-						//Write the message received from the client, that is now in the child, to the server
-						close(pipe_SERVER_reading_from_child[0]);
-						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
-						printf("Wrote to the server\n");
-						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
+						printf("Child received from client: %s\n", tx_buf);
+//						open(pipe_child_writing_to_server[1], O_WRONLY);
+//						//Write the message received from the client, that is now in the child, to the server
+//						close(pipe_SERVER_reading_from_child[0]);
+//						printf("%d",write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG));
+						printf("Child wrote to the server\n");
+//						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
+						print_prompt("admin");
 					}
 
 //					printf("Got past the second read\n");
@@ -403,28 +422,36 @@ int main(int argc, char * argv[])
 				// Server process:
 			if(pid>0){
 				while(1) {
+					usleep(SLEEP_TIME);
 					char tx_buf[MAX_MSG];
 					char rx_buf[MAX_MSG];
+					char stdin[MAX_MSG] = {"\0"};
 					fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
 					fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
 					// Add a new user information into an empty slot
 					// poll child processes and handle user commands
-					close(pipe_SERVER_reading_from_child[1]);
+//					close(pipe_SERVER_reading_from_child[1]);
 					if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
-						printf("Server rx from child: %s\n", rx_buf);
-						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
+						printf("Server received from child: %s\n", rx_buf);
+//						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
+						print_prompt("admin");
 					}
 //					printf("got past the first read in the parent process");
 
 					// Poll stdin (input from the terminal) and handle admnistrative command
-					/** In this block, we are writing from the server to the child **/
 
-					char stdin[MAX_MSG] = {"\0"};
-					if(read(0,stdin, MAX_MSG) > 0) { //If there is data in stdin
-						close(pipe_child_reading_from_server[0]);
-						write(pipe_child_reading_from_server[1], stdin, MAX_MSG);
-						open(pipe_child_reading_from_server[0], O_RDONLY);
+
+					/** In this block, we are polling the input **/
+
+					if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin
+//						pollSTDIN(stdin, user_list, pipe_child_reading_from_server[1], pipe_SERVER_reading_from_child[0]);
+//						void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[])
+						/** This block executes if told to broadcast **/
+//						close(pipe_SERVER_writing_to_child[0]);
+						write(pipe_SERVER_writing_to_child[1], stdin, MAX_MSG);
+//						open(pipe_child_reading_from_server[0], O_RDONLY);
 						printf("pipe to child has contents: %s\n", stdin);
+
 						//Print the prompt at the end of a command
 						print_prompt("admin");
 					}

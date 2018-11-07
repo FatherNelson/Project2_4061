@@ -9,6 +9,7 @@
 
 //DEFINED CONSTANTS BY US
 #define MAX_CMD_LENGTH 100
+#define SLEEP_TIME 1000
 
 typedef enum slot_status {
 	SLOT_FULL =0,
