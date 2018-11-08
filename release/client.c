@@ -13,15 +13,12 @@
 
 /* -------------------------Main function for the client ----------------------*/
 void main(int argc, char * argv[]) {
+	printf("Connecting to server...\n");
 	int pipe_user_reading_from_server[2], pipe_user_writing_to_server[2];
-//	pipe(pipe_user_reading_from_server);
-//	pipe(pipe_user_writing_to_server);
 	char buf[MAX_MSG];
 
 	char* username = argv[1];
-
 	// You will need to get user name as a parameter, argv[1].
-
 	if(connect_to_server("YOUR_UNIQUE_ID", username, pipe_user_reading_from_server,pipe_user_writing_to_server) == -1) {
 		exit(-1);
 	}

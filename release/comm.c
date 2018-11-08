@@ -40,15 +40,19 @@ int recv_fd(int socket, int n, int* fds) {
 	memset(buf, '\0', sizeof(buf));
 	struct iovec io = { .iov_base = &dup, .iov_len = sizeof(dup) };
 
+
 	msg.msg_iov = &io;
 	msg.msg_iovlen = 1;
 	msg.msg_control = buf;
 	msg.msg_controllen = sizeof(buf);
 
+
 	if (recvmsg (socket, &msg, 0) < 0) {
 		printf("Failed to receive message");
 		return -1;
 	}
+
+	printf("got here\n");
 
 	cmsg = CMSG_FIRSTHDR(&msg);
 	memcpy (fds, (int *) CMSG_DATA(cmsg), n * sizeof(int));
@@ -62,6 +66,7 @@ int connect_to_server(char * connect_point, char * user_id, int pipe_user_readin
 	int server_fd;
 
 	server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
 
 	if (server_fd == -1) {
 		printf("Failed to connect server");
@@ -77,30 +82,32 @@ int connect_to_server(char * connect_point, char * user_id, int pipe_user_readin
 	sprintf(socket_address, "/tmp/%s.socket", connect_point);
 	strncpy(addr.sun_path, socket_address, sizeof(addr.sun_path) -1);
 
-
+	printf("%s\n",socket_address);
+	printf("%d\n",server_fd);
 
 	if (connect(server_fd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) == -1) {
 		printf("Failed to connect to socket\n");
 		return -1;
 	}
 
-//	printf("got past connect\n");
-//	printf("user_id has a size of %d\n", sizeof(user_id));
-//	printf("%d %s %d\n", server_fd, user_id, MAX_USER_ID);
+	printf("got past connect\n");
+	printf("user_id has a size of %d\n", sizeof(user_id));
+	printf("%d %s %d\n", server_fd, user_id, MAX_USER_ID);
 
 	if (write(server_fd, user_id, MAX_USER_ID) == -1) {
 		perror("Failed to write user id");
 		return -1;
 	}
 
-//	printf("got past write\n");
+	printf("got past write\n");
 
 	if (recv_fd(server_fd, 2, pipe_user_reading_from_server) !=0) {
 		printf("Error in recv_fd\n");
 		return -1;
 	}
 
-//	printf("got past first rcv_fd\n");
+	printf("got past first recv\n");
+
 
 	if (recv_fd(server_fd, 2, pipe_user_writing_to_server) != 0) {
 		printf("Error in recv_fd\n");
@@ -150,7 +157,7 @@ int setup_connection(char * connect_point)
 
 	printf("Wating user's connection.\n");
 	fcntl(g_sfd, F_SETFL, O_NONBLOCK);
-//	printf("g_sfd has a value of %d\n", g_sfd);
+	printf("g_sfd has a value of %d\n", g_sfd);
 }
 
 int get_connection(char * user_id, int pipe_child_writing_to_user[2], int pipe_child_reading_from_user[2])
@@ -158,6 +165,7 @@ int get_connection(char * user_id, int pipe_child_writing_to_user[2], int pipe_c
 	int cfd = accept(g_sfd, NULL, NULL);
 
 	if (cfd != -1) {
+		printf("cfd is positive\n");
 		//fork and sotre client info
 		//int ret = fork();
 

@@ -239,7 +239,6 @@ void init_user_list(USER * user_list) {
 
 /* ---------------------End of the functions that implementServer functionality -----------------*/
 void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[]){
-	if(read(0, cmd_buf, MAX_CMD_LENGTH) > 0) {
 //		pipe(pipe_SERVER_reading_from_child);
 //		pipe(pipe_SERVER_writing_to_child);
 		read(STDIN_FILENO, cmd_buf, MAX_CMD_LENGTH);
@@ -283,12 +282,16 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 //			printf("No valid command was entered. Here is the list of acceptable commands for the admin: "
 //			       "\\list, \\kick, \\p2p, \\seg, \\exit");
 			printf("Broadcasting message to all users \n");
+			/** This block executes if told to broadcast **/
 			close(pipe_SERVER_writing_to_child[0]);
-			write(pipe_SERVER_writing_to_child[1], "hello", 6);
-			cmd_buf = "\0";
+			write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_MSG);
+			printf("pipe to child has contents: %s\n", cmd_buf);
 		}
+//			close(pipe_SERVER_writing_to_child[0]);
+//			write(pipe_SERVER_writing_to_child[1], "hello", 6);
+//			cmd_buf = "\0";
 		//the commands array the command typed in was found at. We have a 100char limit on command strings.
-		printf("%d \n", found);
+//		printf("%d \n", found);
 
 //		close(pipe_SERVER_writing_to_child[0]); //Prevent reading from pipe while writing
 //		write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_CMD_LENGTH);
@@ -297,7 +300,6 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 		free(tmp);
 		//Should always print the admin prompt before exiting to get ready for the next input
 		print_prompt("admin");
-	}
 }
 
 /* ---------------------Start of the Main function ----------------------------------------------*/
@@ -315,24 +317,26 @@ int main(int argc, char * argv[])
 
 
 
+
 	//
+	int pipe_SERVER_reading_from_child[2];
+	int pipe_SERVER_writing_to_child[2];
+
+	int pipe_child_reading_from_server[2];
+	int pipe_child_writing_to_server[2];
+
+	char cmd_buf[MAX_CMD_LENGTH] = {"\0"};
+	char user_id[MAX_USER_ID];
+	char msg_buf[MAX_MSG];
 	while(1) {
 		usleep(SLEEP_TIME);
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 
 		// Handling a new connection using get_connection
-		int pipe_SERVER_reading_from_child[2];
-		int pipe_SERVER_writing_to_child[2];
-
-		int pipe_child_reading_from_server[2];
-		int pipe_child_writing_to_server[2];
-
-		char cmd_buf[MAX_CMD_LENGTH] = {"\0"};
-		char user_id[MAX_USER_ID];
-		char msg_buf[MAX_MSG];
 
 		/** If we find a new connection, then we have a server and child process to take care of.**/
 		if(get_connection(user_id, pipe_child_reading_from_server, pipe_child_writing_to_server) != -1) {
+			printf("Added a new user!\n");
 			pipe(pipe_SERVER_reading_from_child);
 			pipe(pipe_SERVER_writing_to_child);
 			int index_of_user = find_user_index(user_list, user_id);
@@ -383,45 +387,25 @@ int main(int argc, char * argv[])
 //						close(pipe_child_reading_from_server[1]);
 						print_prompt("admin");
 					}
-//					if(read(pipe_child_reading_from_server[0], tmp, MAX_MSG) > 0) {
-//						if (tmp != " ") {
-//							printf("Child read %s from the server\n", tmp);
-//							//This should write to the client, note that the "pipe_SERVER_writing_to_child" now writes to client
-////							close(pipe_SERVER_writing_to_child[0]);
-//							printf("%d\n", write(pipe_SERVER_writing_to_child[1], tmp, MAX_MSG));
-////							close(pipe_SERVER_writing_to_child[1]);
-////							open(pipe_SERVER_writing_to_child[0], O_RDONLY);
-//							char* msg = "";
-//							pread(pipe_SERVER_writing_to_child[0],msg, MAX_MSG,0);
-//							printf("Child wrote %s to the client\n", msg);
-//							print_prompt("admin");
-//						}
-//					}
-//					printf("Got past the first read\n");
 					char tx_buf[MAX_MSG];
 
-//					printf("I am the child process and was called by user: %s\n", user_id);
-					//This will retrieve information from the client to the child process
 					if (read(pipe_child_writing_to_server[0], tx_buf, MAX_MSG) > 0){
 						printf("Child received from client: %s\n", tx_buf);
 //						open(pipe_child_writing_to_server[1], O_WRONLY);
 //						//Write the message received from the client, that is now in the child, to the server
 //						close(pipe_SERVER_reading_from_child[0]);
-//						printf("%d",write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG));
+						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
 						printf("Child wrote to the server\n");
 //						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
 						print_prompt("admin");
 					}
-
-//					printf("Got past the second read\n");
-//					print_prompt("admin");
 
 				}
 			}
 
 				// Server process:
 			if(pid>0){
-				while(1) {
+//				while(1) {
 					usleep(SLEEP_TIME);
 					char tx_buf[MAX_MSG];
 					char rx_buf[MAX_MSG];
@@ -444,26 +428,25 @@ int main(int argc, char * argv[])
 					/** In this block, we are polling the input **/
 
 					if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin
-//						pollSTDIN(stdin, user_list, pipe_child_reading_from_server[1], pipe_SERVER_reading_from_child[0]);
-//						void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[])
+						printf("%s\n", stdin);
+						pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
 						/** This block executes if told to broadcast **/
 //						close(pipe_SERVER_writing_to_child[0]);
-						write(pipe_SERVER_writing_to_child[1], stdin, MAX_MSG);
+//						write(pipe_SERVER_writing_to_child[1], stdin, MAX_MSG);
 //						open(pipe_child_reading_from_server[0], O_RDONLY);
-						printf("pipe to child has contents: %s\n", stdin);
-
-						//Print the prompt at the end of a command
-						print_prompt("admin");
+//						printf("pipe to child has contents: %s\n", stdin);
+//
+//						//Print the prompt at the end of a command
+//						print_prompt("admin");
 					}
-//					printf("Nothing blocked me\n");
-					/**															**/
-				}
+//				}
 			}
 			else{
 				perror("pipe failed\n");
 				exit(-1);
 			}
 		}
+
 
 		/** If we do not have a new user, then these actions will take place **/
 
