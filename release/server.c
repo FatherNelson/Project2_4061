@@ -101,26 +101,42 @@ void kill_user(int idx, USER * user_list) {
 	char buf[5];
 	sprintf(buf, "%d", pid_to_kill);
 	printf("PID to kill is: %s\n", buf);
-	if(kill(pid_to_kill,SIGKILL) <0){
-		printf("Failed to kill the process\n");
+	if (kill(pid_to_kill, SIGKILL) < 0) {
+		printf("Failed to kill the child process\n");
 	}; // The system call to kill the user
-	// then call waitpid on the user
 	int status;
 	waitpid(pid_to_kill, &status, 0);
-	printf("Returned from waitpid\n");
-//	kill(getpid(), SIGKILL);
+	printf("Killed child process: %d\n", pid_to_kill);
+	if (kill(pid_to_kill-1, SIGKILL) < 0) {
+		printf("Failed to kill the child process\n");
+	}; // The system call to kill the user
+	int status2;
+	waitpid(pid_to_kill-1, &status, 0);
+	printf("Killed child process: %d\n", pid_to_kill-1);
 }
-
 /*
  * Perform cleanup actions after the used has been killed
  */
 void cleanup_user(int idx, USER * user_list)
 {
+	USER user_cleaning = user_list[idx];
+	printf("%s\n", user_list[idx].m_user_id);
 	// m_pid should be set back to -1
+//	memset(user_cleaning.m_pid,-1, sizeof(user_cleaning.m_pid));
+	user_list[idx].m_pid = -1;
 	// m_user_id should be set to zero, using memset()
+	memset(user_cleaning.m_user_id, 0, sizeof(user_cleaning.m_user_id));
 	// close all the fd
+	close(user_cleaning.m_fd_to_server);
+	close(user_cleaning.m_fd_to_user);
 	// set the value of all fd back to -1
+	user_cleaning.m_fd_to_user =  -1;
+	user_cleaning.m_fd_to_server = -1;
+	printf("got here\n");
 	// set the status back to empty
+	user_cleaning.m_status = SLOT_EMPTY; //Set it to the empty val
+	user_list[idx] = user_cleaning;
+	printf("%s\n", user_list[idx].m_user_id);
 }
 
 /*
@@ -280,15 +296,7 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 					length_of_cmd_array += 1;
 				}
 			}
-//			else{
-//				break; //Break at the newline, that way it will not get to the output
-//			}
 		}
-//		printf("END OF SPLITTING INPUT\n");
-//		printf("%d\n", length_of_cmd_array);
-//		printf("%d\n", strlen(arg_array[0]));
-
-//		printf("cmd_buf has a value of %s \n", cmd_buf);
 
 		//Sanity check in case of array only being one word long.
 		if(length_of_cmd_array == 1){
@@ -321,23 +329,7 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 			char* user_to_delete = arg_array[1];
 			printf("Kick command was entered for user: %s\n",arg_array[1]);
 			int user_index = find_user_index(user_list, user_to_delete);
-			kill_user(user_index, user_list);
-//			int pid = fork(); // We want to use a child process to kill this process
-//			if(pid == 0){ //If child process
-//				printf("Carrying out kill op\n");
-//				char* argv[5];
-//				argv[0] = "kill";
-//				argv[1] = "-9";
-//				argv[2] = buf;
-//				argv[3] = "\0";
-//				if(execvp(NULL, argv)){
-//					printf("Execvp returned so something is messed up\n");
-//				}
-//			}
-//			if(pid > 0 ){
-//				wait(NULL);
-//			}
-//			print_prompt("admin");
+			kick_user(user_index, user_list);
 			cmd_buf = "\0";
 		}
 			/** P2P **/
