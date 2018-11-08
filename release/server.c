@@ -67,6 +67,7 @@ int list_users(int idx, USER * user_list)
 			perror("writing to server shell");
 	}
 
+
 	return 0;
 }
 
@@ -242,16 +243,56 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 //		pipe(pipe_SERVER_reading_from_child);
 //		pipe(pipe_SERVER_writing_to_child);
 		read(STDIN_FILENO, cmd_buf, MAX_CMD_LENGTH);
-		if (cmd_buf != "") {
-			printf("%s \n", cmd_buf);
+
+		/** Wrap this section as a parsing function **/
+//		printf("START OF SPLITTING INPUT\n");
+		char* arg_array[100] = {"\0"}; //Holds the arguments we are about to split.
+		char* pch; //This holds the split string, imagine it as another arg array
+		pch = strtok (cmd_buf," ");
+		int length_of_cmd_array = 0; // This tells us how many arguments are in the string.
+		while (pch != NULL)
+		{
+			if(pch != "\n") {
+//				printf("%s\n", pch);
+				arg_array[length_of_cmd_array] = pch;
+//				printf("%s\n", arg_array[length_of_cmd_array]);
+				pch = strtok(NULL, " \n"); //Trims all spaces and newlines, should now have an arg array in pch.
+				if(pch != "") {
+					char *tmp = (char *) malloc(strlen(arg_array[length_of_cmd_array]));
+					strncpy(tmp, arg_array[length_of_cmd_array], strlen(arg_array[length_of_cmd_array])); //Trims new lines
+					arg_array[length_of_cmd_array] = tmp;
+					length_of_cmd_array += 1;
+				}
+			}
+//			else{
+//				break; //Break at the newline, that way it will not get to the output
+//			}
 		}
-		printf("cmd_buf has a value of %s \n", cmd_buf);
-		/**This block should trim any excess char. Make sure to take care of excess malloc **/
-		char* tmp = (char*) malloc(strlen(cmd_buf)-1);
-		strncpy(tmp, cmd_buf, strlen(cmd_buf)-1);
-		// This value is the value that indicates what position in the commands array in util.c the command was
+//		printf("END OF SPLITTING INPUT\n");
+//		printf("%d\n", length_of_cmd_array);
+//		printf("%d\n", strlen(arg_array[0]));
+
+//		printf("cmd_buf has a value of %s \n", cmd_buf);
+
+		//Sanity check in case of array only being one word long.
+		if(length_of_cmd_array == 1){
+//			printf("length of cmd array was one\n");
+			char tmp[MAX_CMD_LENGTH] = {"\0"};
+			strncpy(tmp, arg_array[0], strlen(arg_array[0])-1); //Trims new lines
+			arg_array[0] = tmp;
+			printf("%s", arg_array[0]);
+		}
+		/**This block should trim any excess char, specifically, the trailing newline.
+		 * Make sure to take care of excess malloc **/
+		for(int i = 0; i < length_of_cmd_array; i++) {
+			printf("Position %d: %s\n", i, arg_array[i]);
+		}
+//		printf("END OF INPUT PROCESSING\n");
+
+	/** **/
+	// This value is the value that indicates what position in the commands array in util.c the command was
 		// found at
-		int found = find_command_type(tmp);
+		int found = find_command_type(arg_array[0]);
 		//In this block the decision as to what the input meant is done here.
 		/** List **/
 		if(found == 0){
@@ -261,6 +302,25 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 		}
 			/** Kick **/
 		else if(found ==1){
+			char* user_to_delete = arg_array[1];
+			printf("Kick command was entered for user: %s\n",arg_array[1]);
+			int user_index = find_user_index(user_list, user_to_delete);
+			printf("They are at index: %d\n", user_index);
+			USER dude = user_list[user_index];
+			printf("This user has a pid of %d\n", dude.m_pid);
+			char* pid_to_kill = (char*) dude.m_pid;
+			int pid = fork(); // We want to use a child process to kill this process
+			if(pid == 0){ //If child process
+				printf("Carrying out kill op\n");
+				char* argv[5];
+				argv[0] = "kill";
+				argv[1] = "-9";
+				argv[2] = pid_to_kill;
+				argv[3] = NULL;
+				if(execvp(NULL, argv)){
+					printf("Execvp returned so something is messed up\n");
+				}
+			}
 			print_prompt("admin");
 			cmd_buf = "\0";
 		}
@@ -297,7 +357,7 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 //		write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_CMD_LENGTH);
 
 		//Take care of the malloc we made to make the casting work, regardless of what the stdin term char is
-		free(tmp);
+//		free(tmp);
 		//Should always print the admin prompt before exiting to get ready for the next input
 		print_prompt("admin");
 }
@@ -332,6 +392,7 @@ int main(int argc, char * argv[])
 		usleep(SLEEP_TIME);
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 
+		/**Server Process**/
 		//This is the server process, will run all the time
 		usleep(SLEEP_TIME);
 		char tx_buf[MAX_MSG];
@@ -347,7 +408,6 @@ int main(int argc, char * argv[])
 //						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
 			print_prompt("admin");
 		}
-
 		// Poll stdin (input from the terminal) and handle admnistrative command
 		/** In this block, we are polling the input **/
 
@@ -356,24 +416,20 @@ int main(int argc, char * argv[])
 			pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
 			/** This block executes if told to broadcast **/
 		}
-		// Handling a new connection using get_connection
 
+
+		// Handling a new connection using get_connection
 		/** If we find a new connection, then we have a server and child process to take care of.**/
 		if(get_connection(user_id, pipe_child_reading_from_server, pipe_child_writing_to_server) != -1) {
 			printf("Added a new user!\n");
 			pipe(pipe_SERVER_reading_from_child);
 			pipe(pipe_SERVER_writing_to_child);
 			int index_of_user = find_user_index(user_list, user_id);
+			int index_of_new_user;
 			printf("%d\n", index_of_user);
 			if(index_of_user < 0){
-				int index_of_new_user = find_empty_slot(user_list);
+				index_of_new_user = find_empty_slot(user_list);
 				printf("%d\n", index_of_new_user);
-				/** These users should be children or clients? **/
-				add_user(index_of_new_user, user_list, getpid(), user_id, pipe_SERVER_reading_from_child,
-				         pipe_SERVER_writing_to_child);
-				list_users(-1,user_list); //When list users is called by negative one, it indicates the server
-				//asking for the information.
-				print_prompt("admin");
 			}
 			/** only stable version so far has this bloc of non-blocking statements, will keep until a better strat **/
 			fcntl(pipe_child_writing_to_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
@@ -388,6 +444,15 @@ int main(int argc, char * argv[])
 
 			/**																											**/
 			int pid = fork();
+			if(pid > 0) { // Should give the pid to the parent process
+				printf("I am a child process with pid: %d. I am at index: %d\n", pid, index_of_new_user);
+				/** These users should be children or clients? **/
+				add_user(index_of_new_user, user_list, getpid(), user_id, pipe_SERVER_reading_from_child,
+				         pipe_SERVER_writing_to_child);
+				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
+				//asking for the information. The last argument turns on or off verbose mode.
+				print_prompt("admin");
+			}
 			/** We want to make sure this user list is known to the server and the child process equally**/
 			// Check max user and same user id
 			/** 																						**/
