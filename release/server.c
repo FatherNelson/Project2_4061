@@ -4,9 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <signal.h>
+#include <sys/types.h>
 #include "comm.h"
 #include "util.h"
-
 /* -----------Functions that implement server functionality -------------------------*/
 
 /*
@@ -93,8 +94,21 @@ int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_chi
  */
 void kill_user(int idx, USER * user_list) {
 	// kill a user (specified by idx) by using the systemcall kill()
+	printf("They are at index: %d\n", idx);
+	USER dude = user_list[idx];
+	printf("This user has a pid of %d\n", dude.m_pid);
+	int pid_to_kill = dude.m_pid;
+	char buf[5];
+	sprintf(buf, "%d", pid_to_kill);
+	printf("PID to kill is: %s\n", buf);
+	if(kill(pid_to_kill,SIGKILL) <0){
+		printf("Failed to kill the process\n");
+	}; // The system call to kill the user
 	// then call waitpid on the user
-
+	int status;
+	waitpid(pid_to_kill, &status, 0);
+	printf("Returned from waitpid\n");
+//	kill(getpid(), SIGKILL);
 }
 
 /*
@@ -114,7 +128,9 @@ void cleanup_user(int idx, USER * user_list)
  */
 void kick_user(int idx, USER * user_list) {
 	// should kill_user()
+	kill_user(idx, user_list);
 	// then perform cleanup_user()
+	cleanup_user(idx, user_list);
 }
 
 /*
@@ -305,23 +321,23 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 			char* user_to_delete = arg_array[1];
 			printf("Kick command was entered for user: %s\n",arg_array[1]);
 			int user_index = find_user_index(user_list, user_to_delete);
-			printf("They are at index: %d\n", user_index);
-			USER dude = user_list[user_index];
-			printf("This user has a pid of %d\n", dude.m_pid);
-			char* pid_to_kill = (char*) dude.m_pid;
-			int pid = fork(); // We want to use a child process to kill this process
-			if(pid == 0){ //If child process
-				printf("Carrying out kill op\n");
-				char* argv[5];
-				argv[0] = "kill";
-				argv[1] = "-9";
-				argv[2] = pid_to_kill;
-				argv[3] = NULL;
-				if(execvp(NULL, argv)){
-					printf("Execvp returned so something is messed up\n");
-				}
-			}
-			print_prompt("admin");
+			kill_user(user_index, user_list);
+//			int pid = fork(); // We want to use a child process to kill this process
+//			if(pid == 0){ //If child process
+//				printf("Carrying out kill op\n");
+//				char* argv[5];
+//				argv[0] = "kill";
+//				argv[1] = "-9";
+//				argv[2] = buf;
+//				argv[3] = "\0";
+//				if(execvp(NULL, argv)){
+//					printf("Execvp returned so something is messed up\n");
+//				}
+//			}
+//			if(pid > 0 ){
+//				wait(NULL);
+//			}
+//			print_prompt("admin");
 			cmd_buf = "\0";
 		}
 			/** P2P **/
@@ -445,9 +461,16 @@ int main(int argc, char * argv[])
 			/**																											**/
 			int pid = fork();
 			if(pid > 0) { // Should give the pid to the parent process
+
+				/*It is important to note that the actual client process always will have a value one lower than the
+				 * value of getpid() here, so we must decide either to kill just the child process or kill both. Ideally
+				 * We probably should kill the child and as part of the death procedures after killing the child to stop
+				 * the messages, we should then axe the client.
+				 * */
+
 				printf("I am a child process with pid: %d. I am at index: %d\n", pid, index_of_new_user);
 				/** These users should be children or clients? **/
-				add_user(index_of_new_user, user_list, getpid(), user_id, pipe_SERVER_reading_from_child,
+				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_reading_from_child,
 				         pipe_SERVER_writing_to_child);
 				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
 				//asking for the information. The last argument turns on or off verbose mode.
