@@ -19,7 +19,7 @@ void main(int argc, char * argv[]) {
 
 	char* username = argv[1];
 	// You will need to get user name as a parameter, argv[1].
-	if(connect_to_server("YOUR_UNIQUE_ID", username, pipe_user_reading_from_server,pipe_user_writing_to_server) == -1) {
+	if(connect_to_server("Project2_59", username, pipe_user_reading_from_server,pipe_user_writing_to_server) == -1) {
 		exit(-1);
 	}
 	else {

@@ -1,4 +1,4 @@
-#include <stdio.h> 
+#include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -41,8 +41,8 @@ int list_users(int idx, USER * user_list)
 
 	/* construct a list of user names */
 	s = buf;
-	strncpy(s, "---connecetd user list---\n", strlen("---connecetd user list---\n"));
-	s += strlen("---connecetd user list---\n");
+	strncpy(s, "---connected user list---\n", strlen("---connected user list---\n"));
+	s += strlen("---connected user list---\n");
 	for (i = 0; i < MAX_USER; i++) {
 		if (user_list[i].m_status == SLOT_EMPTY)
 			continue;
@@ -64,8 +64,8 @@ int list_users(int idx, USER * user_list)
 		printf("\n");
 	} else {
 		/* write to the given pipe fd */
-		if (write(user_list[idx].m_fd_to_user, buf, strlen(buf) + 1) < 0)
-			perror("writing to server shell");
+		if (write(user_list[idx].m_fd_to_server, buf, strlen(buf) + 1) < 0)
+			perror("failed to write to server shell");
 	}
 
 
@@ -157,6 +157,14 @@ int broadcast_msg(USER * user_list, char *buf, char *sender)
 	//iterate over the user_list and if a slot is full, and the user is not the sender itself,
 	//then send the message to that user
 	//return zero on success
+  for (int i = 0; i < MAX_USER; i++) {
+    if (user_list[i].m_status == SLOT_EMPTY) { // Reached the last user
+      continue;
+    }
+    else {
+      write(user_list[i].m_fd_to_user, buf, MAX_CMD_LENGTH);
+    }
+  }
 	return 0;
 }
 
@@ -241,7 +249,7 @@ void send_p2p_msg(int idx, USER * user_list, char *buf)
 
 	// get the target user by name using extract_name() function
 	// find the user id using find_user_index()
-	// if user not found, write back to the original user "User not found", using the write()function on pipes. 
+	// if user not found, write back to the original user "User not found", using the write()function on pipes.
 	// if the user is found then write the message that the user wants to send to that user.
 }
 
@@ -318,43 +326,36 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 		// found at
 		int found = find_command_type(arg_array[0]);
 		//In this block the decision as to what the input meant is done here.
-		/** List **/
-		if(found == 0){
-			printf("List command was entered");
-			list_users(-1, user_list); //See definition of list_users, must be called with -1 to make sense.
-			cmd_buf = "\0";
-		}
-			/** Kick **/
-		else if(found ==1){
-			char* user_to_delete = arg_array[1];
-			printf("Kick command was entered for user: %s\n",arg_array[1]);
-			int user_index = find_user_index(user_list, user_to_delete);
-			kick_user(user_index, user_list);
-			cmd_buf = "\0";
-		}
-			/** P2P **/
-		else if(found ==2){
-			print_prompt("admin");
-			cmd_buf = "\0";
-		}
-			/** Seg **/
-		else if(found ==3){
-			print_prompt("admin");
-			cmd_buf = "\0";
-		}
-		else if(found == 4){
-			print_prompt("admin");
-			cmd_buf = "\0";
-		}
-		else if(found == 5){
-//			printf("No valid command was entered. Here is the list of acceptable commands for the admin: "
-//			       "\\list, \\kick, \\p2p, \\seg, \\exit");
-			printf("Broadcasting message to all users \n");
-			/** This block executes if told to broadcast **/
-			close(pipe_SERVER_writing_to_child[0]);
-			write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_MSG);
-			printf("pipe to child has contents: %s\n", cmd_buf);
-		}
+    switch (found){
+  		case 0:
+        /** List **/
+  			printf("List command was entered");
+  			list_users(-1, user_list); //See definition of list_users, must be called with -1 to make sense.
+  			cmd_buf = "\0";
+        break;
+   		case 1:
+        /** Kick **/
+   			printf("Kick command was entered for user: %s\n",arg_array[1]);
+   			int user_index = find_user_index(user_list, arg_array[1]);
+   			kick_user(user_index, user_list);
+         break;
+   		case 2:
+         /** P2P **/
+         break;
+   		case 3:
+         /** Seg **/
+         break;
+   		case 4:
+         /** Exit **/
+         break;
+   		default:
+         /** No valid command **/
+   //			printf("No valid command was entered. Here is the list of acceptable commands for the admin: "
+   //			       "\\list, \\kick, \\p2p, \\seg, \\exit");
+   			printf("Broadcasting message to all users \n");
+   			/** This block executes if told to broadcast **/
+        broadcast_msg(user_list, cmd_buf, "admin");
+	 	}
 //			close(pipe_SERVER_writing_to_child[0]);
 //			write(pipe_SERVER_writing_to_child[1], "hello", 6);
 //			cmd_buf = "\0";
@@ -367,6 +368,7 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 		//Take care of the malloc we made to make the casting work, regardless of what the stdin term char is
 //		free(tmp);
 		//Should always print the admin prompt before exiting to get ready for the next input
+    cmd_buf = "\0";
 		print_prompt("admin");
 }
 
@@ -379,7 +381,7 @@ int main(int argc, char * argv[])
 	USER user_list[MAX_USER];
 	init_user_list(user_list);   // Initialize user list
 
-	char buf[MAX_MSG]; 
+	char buf[MAX_MSG];
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 	print_prompt("admin");
 
@@ -462,8 +464,7 @@ int main(int argc, char * argv[])
 
 				printf("I am a child process with pid: %d. I am at index: %d\n", pid, index_of_new_user);
 				/** These users should be children or clients? **/
-				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_reading_from_child,
-				         pipe_SERVER_writing_to_child);
+				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_writing_to_child[1], pipe_SERVER_reading_from_child[0]);
 				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
 				//asking for the information. The last argument turns on or off verbose mode.
 				print_prompt("admin");
@@ -552,7 +553,7 @@ int main(int argc, char * argv[])
 
 
 //		pollSTDIN(cmd_buf, user_list, pipe_SERVER_writing_to_child ,pipe_SERVER_reading_from_child);
-	
+
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 	}
 }
