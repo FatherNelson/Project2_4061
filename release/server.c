@@ -272,10 +272,9 @@ void init_user_list(USER * user_list) {
 
 /* ---------------------End of the functions that implementServer functionality -----------------*/
 void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[]){
-//		pipe(pipe_SERVER_reading_from_child);
-//		pipe(pipe_SERVER_writing_to_child);
 		read(STDIN_FILENO, cmd_buf, MAX_CMD_LENGTH);
-
+		char preserve_cmd_buf[MAX_CMD_LENGTH];
+		strcpy(preserve_cmd_buf,cmd_buf); //Preserve the entire string in cases where we are broadcasting. Could just make a copy later
 		/** Wrap this section as a parsing function **/
 //		printf("START OF SPLITTING INPUT\n");
 		char* arg_array[100] = {"\0"}; //Holds the arguments we are about to split.
@@ -342,31 +341,19 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 			print_prompt("admin");
 			cmd_buf = "\0";
 		}
+			/** Exit **/
 		else if(found == 4){
 			print_prompt("admin");
 			cmd_buf = "\0";
 		}
+			/** If no particular command, it is a broadcast **/
 		else if(found == 5){
-//			printf("No valid command was entered. Here is the list of acceptable commands for the admin: "
-//			       "\\list, \\kick, \\p2p, \\seg, \\exit");
 			printf("Broadcasting message to all users \n");
 			/** This block executes if told to broadcast **/
 			close(pipe_SERVER_writing_to_child[0]);
-			write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_MSG);
-			printf("pipe to child has contents: %s\n", cmd_buf);
+			write(pipe_SERVER_writing_to_child[1], preserve_cmd_buf, MAX_MSG);
+			printf("pipe to child has contents: %s\n", preserve_cmd_buf);
 		}
-//			close(pipe_SERVER_writing_to_child[0]);
-//			write(pipe_SERVER_writing_to_child[1], "hello", 6);
-//			cmd_buf = "\0";
-		//the commands array the command typed in was found at. We have a 100char limit on command strings.
-//		printf("%d \n", found);
-
-//		close(pipe_SERVER_writing_to_child[0]); //Prevent reading from pipe while writing
-//		write(pipe_SERVER_writing_to_child[1], cmd_buf, MAX_CMD_LENGTH);
-
-		//Take care of the malloc we made to make the casting work, regardless of what the stdin term char is
-//		free(tmp);
-		//Should always print the admin prompt before exiting to get ready for the next input
 		print_prompt("admin");
 }
 
@@ -382,10 +369,6 @@ int main(int argc, char * argv[])
 	char buf[MAX_MSG]; 
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 	print_prompt("admin");
-
-
-
-
 	//
 	int pipe_SERVER_reading_from_child[2];
 	int pipe_SERVER_writing_to_child[2];
@@ -424,7 +407,6 @@ int main(int argc, char * argv[])
 			pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
 			/** This block executes if told to broadcast **/
 		}
-
 
 		// Handling a new connection using get_connection
 		/** If we find a new connection, then we have a server and child process to take care of.**/
@@ -476,82 +458,28 @@ int main(int argc, char * argv[])
 				while(1) {
 					usleep(SLEEP_TIME);
 //			poll users and SERVER
-					//Read from the SERVER process trying to talk to the client
-//					close(pipe_child_reading_from_server[1]);
 					char tmp[MAX_MSG];
-//					fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-
-
-//					fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-//					fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 
 					if(read(pipe_SERVER_writing_to_child[0], tmp, MAX_MSG) > 0){
 						printf("The child process received: %s\n", tmp);
-//						open(pipe_child_reading_from_server[1], O_WRONLY);
-//						close(pipe_child_reading_from_server[0]);
 						write(pipe_child_reading_from_server[1], tmp, MAX_MSG);
-//						open(pipe_child_reading_from_server[0], O_RDONLY);
-//						close(pipe_child_reading_from_server[1]);
 						print_prompt("admin");
 					}
 					char tx_buf[MAX_MSG];
 
 					if (read(pipe_child_writing_to_server[0], tx_buf, MAX_MSG) > 0){
 						printf("Child received from client: %s\n", tx_buf);
-//						open(pipe_child_writing_to_server[1], O_WRONLY);
-//						//Write the message received from the client, that is now in the child, to the server
-//						close(pipe_SERVER_reading_from_child[0]);
 						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
 						printf("Child wrote to the server\n");
-//						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
 						print_prompt("admin");
 					}
 
 				}
 			}
-			/** The server process at one time was part of the fork and this was wrong, now we want it to be the
-			 * identity of main and to have many children, as is the setup now.
-			 */
-
-				// Server process:
-//			if(pid>0){
-//				while(1) {
-//					usleep(SLEEP_TIME);
-//					char tx_buf[MAX_MSG];
-//					char rx_buf[MAX_MSG];
-//					char stdin[MAX_MSG] = {"\0"};
-//					fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
-//					fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
-//					// Add a new user information into an empty slot
-//					// poll child processes and handle user commands
-////					close(pipe_SERVER_reading_from_child[1]);
-//					if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
-//						printf("Server received from child: %s\n", rx_buf);
-////						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
-//						print_prompt("admin");
-//					}
-//
-//					// Poll stdin (input from the terminal) and handle admnistrative command
-//					/** In this block, we are polling the input **/
-//
-//					if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
-//						printf("%s\n", stdin);
-//						pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
-//						/** This block executes if told to broadcast **/
-//					}
-//				}
-//			}
-//			else{
-//				perror("pipe failed\n");
-//				exit(-1);
-//			}
 		}
 
 
 		/** If we do not have a new user, then these actions will take place **/
-
-
-//		pollSTDIN(cmd_buf, user_list, pipe_SERVER_writing_to_child ,pipe_SERVER_reading_from_child);
 	
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 	}
