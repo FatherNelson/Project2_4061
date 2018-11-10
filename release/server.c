@@ -273,7 +273,8 @@ void init_user_list(USER * user_list) {
 /* ---------------------End of the functions that implementServer functionality -----------------*/
 
 // parse_message parses, and executes the commmand given in cmd_buf. If no command is given, it broadcast the message
-void parse_message(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[]){
+// idx is the index of the user who sent the message, or -1 if the server sent the message
+void parse_message(char* cmd_buf, USER user_list[], int idx){
 		/** Wrap this section as a parsing function **/
 		char* arg_array[MAX_MSG] = {"\0"}; //Holds the arguments we are about to split.
 		char* pch; //This holds the split string, imagine it as another arg array
@@ -348,11 +349,6 @@ void parse_message(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_c
 		print_prompt("admin");
 }
 
-//Process commands for both the server (idx = -1), and  the users (idx = index within user_list)
-//void process_command(char* cmd_buf, USER user_list, idx) {
-
-//}
-
 /* ---------------------Start of the Main function ----------------------------------------------*/
 int main(int argc, char * argv[])
 {
@@ -394,6 +390,13 @@ int main(int argc, char * argv[])
 		// Add a new user information into an empty slot
 		// poll child processes and handle user commands
 //					close(pipe_SERVER_reading_from_child[1]);
+
+    //for (int i = 0; i < MAX_USER; i++) {
+      ///if(read(user_list[i].m_fd_to_server, rx_buf, MAX_MSG > 0)) {
+      //  printf("I suk: %s\n", rx_buf);
+      //}
+    //}
+
 		if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
 			printf("Server received from child: %s\n", rx_buf);
 //						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
@@ -401,8 +404,8 @@ int main(int argc, char * argv[])
 		}
 		// Poll stdin (input from the terminal) and handle admnistrative command
 		if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
-			printf("%s\n", stdin);
-			parse_message(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
+			printf("Server recceived from STDIN%s\n", stdin);
+			parse_message(stdin, user_list, -1);
 		}
 
 
