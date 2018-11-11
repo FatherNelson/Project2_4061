@@ -5,7 +5,7 @@
 * id: 5262811, id: 5241931, id 5177976
 * Workload Distribution:
 *  Grant: Handled creation of server children, and got basic communication
-*     between the server and children.
+*     between the server, children, and clients.
 *
 *  Jake: Implemented the commands for the clients, i.e p2p, list, exit.
 *
