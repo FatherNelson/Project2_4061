@@ -70,7 +70,7 @@ int list_users(int idx, USER * user_list)
 }
 
 /*
- * add a new user
+ * add a new user to the given index of the user list.
  */
 int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_user, int pipe_to_server)
 {
@@ -384,11 +384,6 @@ int main(int argc, char * argv[])
 	char buf[MAX_MSG];
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 	print_prompt("admin");
-
-
-
-
-	//
 	int pipe_SERVER_reading_from_child[2];
 	int pipe_SERVER_writing_to_child[2];
 
@@ -434,7 +429,7 @@ int main(int argc, char * argv[])
   			pipe(pipe_SERVER_reading_from_child);
   			pipe(pipe_SERVER_writing_to_child);
         int index_of_new_user = find_empty_slot(user_list);
-  			/** only stable version so far has this bloc of non-blocking statements, will keep until a better strat **/
+  			/** Make each pipes nonblocking **/
   			fcntl(pipe_client_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
   			fcntl(pipe_client_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
   			fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
@@ -446,14 +441,14 @@ int main(int argc, char * argv[])
   			fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 
   			int pid = fork();
-  			if(pid > 0) { // Should give the pid to the parent process
+        if(pid < 0) {
+          perror("Failled to Fork");
+          cleanup_users(user_list);
+          exit(0);
+        }
 
-  				/*It is important to note that the actual client process always will have a value one lower than the
-  				 * value of getpid() here, so we must decide either to kill just the child process or kill both. Ideally
-  				 * We probably should kill the child and as part of the death procedures after killing the child to stop
-  				 * the messages, we should then axe the client.
-  				 * */
-  				/** These users should be children **/
+  			if(pid > 0) {
+  				/** server process (parent) **/
   				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_writing_to_child[1], pipe_SERVER_reading_from_child[0]);
   				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
   				//asking for the information.
@@ -461,7 +456,6 @@ int main(int argc, char * argv[])
   			}
   			/** We want to make sure this user list is known to the server and the child process equally**/
   			// Check max user and same user id
-  			/** 																						**/
   			// Child process:
   			if (pid == 0) {
           close(pipe_SERVER_reading_from_child[0]);
@@ -470,9 +464,8 @@ int main(int argc, char * argv[])
           close(pipe_client_writing_to_child[1]);
   				while(1) {
   					usleep(SLEEP_TIME);
-  //			poll users and SERVER
+            //poll users and SERVER
   					//Read from the SERVER process trying to talk to the client
-  //					close(pipe_client_reading_from_child[1]);
   					char tmp[MAX_MSG];
   					if(read(pipe_SERVER_writing_to_child[0], tmp, MAX_MSG) > 0){
   						write(pipe_client_reading_from_child[1], tmp, MAX_MSG);
@@ -482,7 +475,6 @@ int main(int argc, char * argv[])
   					if (read(pipe_client_writing_to_child[0], tx_buf, MAX_MSG) > 0){
   						//Write the message received from the client, that is now in the child, to the server
   						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
-  //						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
   					}
   				}
   			}
