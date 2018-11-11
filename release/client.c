@@ -39,7 +39,6 @@ void main(int argc, char * argv[]) {
 		// Poll stdin (input from the terminal) and send it to server (child process) via pipe
 //		print_prompt(username);
 		if(read(STDIN_FILENO, tx_buf, MAX_MSG) > 0) {
-			printf("READ DATA\n");
 //			close(pipe_user_writing_to_server[0]);
 			write(pipe_user_writing_to_server[1], tx_buf, MAX_MSG);
 			printf("Client wrote to the child: %s\n", tx_buf);

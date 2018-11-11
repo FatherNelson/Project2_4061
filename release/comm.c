@@ -30,7 +30,7 @@ void send_fd(int socket, int *fds, int n)  // send fd by socket
 
 	if (sendmsg (socket, &msg, 0) < 0) {
 		printf("Failed to send message");
-	}	
+	}
 }
 
 int recv_fd(int socket, int n, int* fds) {
@@ -51,8 +51,6 @@ int recv_fd(int socket, int n, int* fds) {
 		printf("Failed to receive message");
 		return -1;
 	}
-
-	printf("got here\n");
 
 	cmsg = CMSG_FIRSTHDR(&msg);
 	memcpy (fds, (int *) CMSG_DATA(cmsg), n * sizeof(int));
@@ -121,7 +119,7 @@ int connect_to_server(char * connect_point, char * user_id, int pipe_user_readin
 	return 0;
 }
 
-int setup_connection(char * connect_point) 
+int setup_connection(char * connect_point)
 {
 	signal(SIGPIPE,SIG_IGN);
 	struct sockaddr_un addr;
@@ -155,7 +153,7 @@ int setup_connection(char * connect_point)
 		return -1;
 	}
 
-	printf("Wating user's connection.\n");
+	printf("Waiting user's connection.\n");
 	fcntl(g_sfd, F_SETFL, O_NONBLOCK);
 //	printf("g_sfd has a value of %d\n", g_sfd);
 }

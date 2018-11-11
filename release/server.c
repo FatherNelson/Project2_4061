@@ -37,8 +37,8 @@ int list_users(int idx, USER * user_list)
 
 	/* construct a list of user names */
 	s = buf;
-	strncpy(s, "---connected user list---\n", strlen("---connected user list---\n"));
-	s += strlen("---connected user list---\n");
+	strncpy(s, "\n---connected user list---\n", strlen("\n---connected user list---\n"));
+	s += strlen("\n---connected user list---\n");
 	for (i = 0; i < MAX_USER; i++) {
     // iterate through the user list
   	// if you find any slot which is not empty, print that m_user_id
@@ -170,6 +170,14 @@ void cleanup_users(USER * user_list)
 {
 	// go over the user list and check for any empty slots
 	// call cleanup user for each of those users.
+  for (int i = 0; i < MAX_USER; i++) {
+    if (user_list[i].m_status == SLOT_EMPTY) {
+      continue;
+    }
+    else {
+      kick_user(i, user_list);
+    }
+  }
 }
 
 /*
@@ -192,7 +200,6 @@ int find_user_index(USER * user_list, char * user_id)
 			return i;
 		}
 	}
-  fprintf(stderr, "No user found with user_id: %s\n", user_id);
 	return -1;
 }
 
@@ -304,30 +311,31 @@ void parse_message(char* cmd_buf, USER user_list[], int idx){
 			char tmp[MAX_CMD_LENGTH] = {"\0"};
 			strncpy(tmp, arg_array[0], strlen(arg_array[0])-1); //Trims new lines
 			arg_array[0] = tmp;
-			printf("array is one long: %s", arg_array[0]);
 		}
 		/**This block should trim any excess char, specifically, the trailing newline.
 		 * Make sure to take care of excess malloc **/
-		for(int i = 0; i < length_of_cmd_array; i++) {
-			printf("Position %d: %s\n", i, arg_array[i]);
-		}
+		// for(int i = 0; i < length_of_cmd_array; i++) {
+		// 	printf("Position %d: %s\n", i, arg_array[i]);
+		// }
 
 	// This value is the value that indicates what position in the commands array in util.c the command was
 		// found at
 		int found = find_command_type(arg_array[0]);
 		//In this block the decision as to what the input meant is done here.
+    int child_idx;
     switch (found){
   		case LIST:
         /** List **/
-  			printf("List command was entered");
   			list_users(-1, user_list); //See definition of list_users, must be called with -1 to make sense.
         break;
    		case KICK:
         /** Kick **/
-   			printf("Kick command was entered for user: %s\n",arg_array[1]);
-        int child_idx = find_user_index(user_list, arg_array[1]);
-        if (child_idx != -1)
+        child_idx = find_user_index(user_list, arg_array[1]);
+        if (child_idx != -1) {
    			  kick_user(child_idx, user_list);
+        } else {
+          printf("User %s does not exist", arg_array[1]);
+        }
          break;
    		case P2P:
          /** P2P **/
@@ -337,11 +345,11 @@ void parse_message(char* cmd_buf, USER user_list[], int idx){
          break;
    		case EXIT:
          /** Exit **/
+         cleanup_users(user_list);
+         exit(0);
          break;
    		default:
          /** No Command Entered **/
-   			printf("Broadcasting message to all users \n"); //when no command is entered,
-                                                        //broadcast the message to everyone
         broadcast_msg(user_list, cmd_buf, "admin");
 	 	}
 		//Should always print the admin prompt before exiting to get ready for the next input
@@ -369,14 +377,13 @@ int main(int argc, char * argv[])
 	int pipe_SERVER_reading_from_child[2];
 	int pipe_SERVER_writing_to_child[2];
 
-	int pipe_child_reading_from_server[2];
-	int pipe_child_writing_to_server[2];
+	int pipe_client_reading_from_child[2];
+	int pipe_client_writing_to_child[2];
 
 	char cmd_buf[MAX_CMD_LENGTH] = {"\0"};
 	char user_id[MAX_USER_ID];
 	char msg_buf[MAX_MSG];
 	while(1) {
-		usleep(SLEEP_TIME);
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 
 		/**Server Process**/
@@ -389,153 +396,129 @@ int main(int argc, char * argv[])
 		fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
 		// Add a new user information into an empty slot
 		// poll child processes and handle user commands
-//					close(pipe_SERVER_reading_from_child[1]);
 
-    //for (int i = 0; i < MAX_USER; i++) {
-      ///if(read(user_list[i].m_fd_to_server, rx_buf, MAX_MSG > 0)) {
-      //  printf("I suk: %s\n", rx_buf);
-      //}
-    //}
-
-		if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
-			printf("Server received from child: %s\n", rx_buf);
-//						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
-			print_prompt("admin");
-		}
+    for (int i = 0; i < MAX_USER; i++) {
+      if(user_list[i].m_status != SLOT_EMPTY) {
+    		if(read(user_list[i].m_fd_to_server, rx_buf, MAX_MSG) > 0) {
+    			printf("Server received from child: %s\n", rx_buf);
+    			print_prompt("admin");
+    		}
+      }
+    }
 		// Poll stdin (input from the terminal) and handle admnistrative command
-		if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
-			printf("Server recceived from STDIN%s\n", stdin);
+		if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) {
 			parse_message(stdin, user_list, -1);
 		}
 
-
-		// Handling a new connection using get_connection
 		/** If we find a new connection, then we have a server and child process to take care of.**/
-		if(get_connection(user_id, pipe_child_reading_from_server, pipe_child_writing_to_server) != -1) {
-			printf("Added a new user!\n");
-			pipe(pipe_SERVER_reading_from_child);
-			pipe(pipe_SERVER_writing_to_child);
-			int index_of_user = find_user_index(user_list, user_id);
-			int index_of_new_user;
-			printf("%d\n", index_of_user);
-			if(index_of_user < 0){
-				index_of_new_user = find_empty_slot(user_list);
-				printf("%d\n", index_of_new_user);
-			}
-			/** only stable version so far has this bloc of non-blocking statements, will keep until a better strat **/
-			fcntl(pipe_child_writing_to_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_child_writing_to_server[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_child_reading_from_server[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_child_reading_from_server[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-			fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+		if(get_connection(user_id, pipe_client_reading_from_child, pipe_client_writing_to_child) != -1) {
+      if(find_user_index(user_list, user_id) >= 0){
+        printf("User %s already exists", user_id);
+      } else {
+  			printf("\nAdded a new user!\n");
+        print_prompt("admin");
+  			pipe(pipe_SERVER_reading_from_child);
+  			pipe(pipe_SERVER_writing_to_child);
+        int index_of_new_user = find_empty_slot(user_list);
+  			/** only stable version so far has this bloc of non-blocking statements, will keep until a better strat **/
+  			fcntl(pipe_client_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_client_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_client_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_client_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  			fcntl(STDIN_FILENO, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 
-			/**																											**/
-			int pid = fork();
-			if(pid > 0) { // Should give the pid to the parent process
+  			int pid = fork();
+  			if(pid > 0) { // Should give the pid to the parent process
 
-				/*It is important to note that the actual client process always will have a value one lower than the
-				 * value of getpid() here, so we must decide either to kill just the child process or kill both. Ideally
-				 * We probably should kill the child and as part of the death procedures after killing the child to stop
-				 * the messages, we should then axe the client.
-				 * */
+  				/*It is important to note that the actual client process always will have a value one lower than the
+  				 * value of getpid() here, so we must decide either to kill just the child process or kill both. Ideally
+  				 * We probably should kill the child and as part of the death procedures after killing the child to stop
+  				 * the messages, we should then axe the client.
+  				 * */
+  				/** These users should be children **/
+  				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_writing_to_child[1], pipe_SERVER_reading_from_child[0]);
+  				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
+  				//asking for the information.
+          print_prompt("admin");
+  			}
+  			/** We want to make sure this user list is known to the server and the child process equally**/
+  			// Check max user and same user id
+  			/** 																						**/
+  			// Child process:
+  			if (pid == 0) {
+          close(pipe_SERVER_reading_from_child[0]);
+          close(pipe_SERVER_writing_to_child[1]);
+          close(pipe_client_reading_from_child[0]);
+          close(pipe_client_writing_to_child[1]);
+  				while(1) {
+  					usleep(SLEEP_TIME);
+  //			poll users and SERVER
+  					//Read from the SERVER process trying to talk to the client
+  //					close(pipe_client_reading_from_child[1]);
+  					char tmp[MAX_MSG];
+  					if(read(pipe_SERVER_writing_to_child[0], tmp, MAX_MSG) > 0){
+  						write(pipe_client_reading_from_child[1], tmp, MAX_MSG);
+  					}
+  					char tx_buf[MAX_MSG];
 
-				printf("I am a child process with pid: %d. I am at index: %d\n", pid, index_of_new_user);
-				/** These users should be children or clients? **/
-				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_writing_to_child[1], pipe_SERVER_reading_from_child[0]);
-				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
-				//asking for the information. The last argument turns on or off verbose mode.
-				print_prompt("admin");
-			}
-			/** We want to make sure this user list is known to the server and the child process equally**/
-			// Check max user and same user id
-			/** 																						**/
-			// Child process:
-			if (pid == 0) {
-				while(1) {
-					usleep(SLEEP_TIME);
-//			poll users and SERVER
-					//Read from the SERVER process trying to talk to the client
-//					close(pipe_child_reading_from_server[1]);
-					char tmp[MAX_MSG];
-//					fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+  					if (read(pipe_client_writing_to_child[0], tx_buf, MAX_MSG) > 0){
+  						printf("Child received from client: %s\n", tx_buf);
+  						//Write the message received from the client, that is now in the child, to the server
+  						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
+  						printf("Child wrote to the server\n");
+  //						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
+  					}
+  				}
+  			}
+  			/** The server process at one time was part of the fork and this was wrong, now we want it to be the
+  			 * identity of main and to have many children, as is the setup now.
+  			 */
 
+  				// Server process:
+  //			if(pid>0){
+  //				while(1) {
+  //					usleep(SLEEP_TIME);
+  //					char tx_buf[MAX_MSG];
+  //					char rx_buf[MAX_MSG];
+  //					char stdin[MAX_MSG] = {"\0"};
+  //					fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
+  //					fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
+  //					// Add a new user information into an empty slot
+  //					// poll child processes and handle user commands
+  ////					close(pipe_SERVER_reading_from_child[1]);
+  //					if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
+  //						printf("Server received from child: %s\n", rx_buf);
+  ////						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
+  //						print_prompt("admin");
+  //					}
+  //
+  //					// Poll stdin (input from the terminal) and handle admnistrative command
+  //					/** In this block, we are polling the input **/
+  //
+  //					if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
+  //						printf("%s\n", stdin);
+  //						pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
+  //						/** This block executes if told to broadcast **/
+  //					}
+  //				}
+  //			}
+  //			else{
+  //				perror("pipe failed\n");
+  //				exit(-1);
+  //			}
+  		}
+    }
 
-//					fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-//					fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
-
-					if(read(pipe_SERVER_writing_to_child[0], tmp, MAX_MSG) > 0){
-						printf("The child process received: %s\n", tmp);
-//						open(pipe_child_reading_from_server[1], O_WRONLY);
-//						close(pipe_child_reading_from_server[0]);
-						write(pipe_child_reading_from_server[1], tmp, MAX_MSG);
-//						open(pipe_child_reading_from_server[0], O_RDONLY);
-//						close(pipe_child_reading_from_server[1]);
-						print_prompt("admin");
-					}
-					char tx_buf[MAX_MSG];
-
-					if (read(pipe_child_writing_to_server[0], tx_buf, MAX_MSG) > 0){
-						printf("Child received from client: %s\n", tx_buf);
-//						open(pipe_child_writing_to_server[1], O_WRONLY);
-//						//Write the message received from the client, that is now in the child, to the server
-//						close(pipe_SERVER_reading_from_child[0]);
-						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
-						printf("Child wrote to the server\n");
-//						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
-						print_prompt("admin");
-					}
-
-				}
-			}
-			/** The server process at one time was part of the fork and this was wrong, now we want it to be the
-			 * identity of main and to have many children, as is the setup now.
-			 */
-
-				// Server process:
-//			if(pid>0){
-//				while(1) {
-//					usleep(SLEEP_TIME);
-//					char tx_buf[MAX_MSG];
-//					char rx_buf[MAX_MSG];
-//					char stdin[MAX_MSG] = {"\0"};
-//					fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
-//					fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
-//					// Add a new user information into an empty slot
-//					// poll child processes and handle user commands
-////					close(pipe_SERVER_reading_from_child[1]);
-//					if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
-//						printf("Server received from child: %s\n", rx_buf);
-////						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
-//						print_prompt("admin");
-//					}
-//
-//					// Poll stdin (input from the terminal) and handle admnistrative command
-//					/** In this block, we are polling the input **/
-//
-//					if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
-//						printf("%s\n", stdin);
-//						pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
-//						/** This block executes if told to broadcast **/
-//					}
-//				}
-//			}
-//			else{
-//				perror("pipe failed\n");
-//				exit(-1);
-//			}
-		}
+  		/** If we do not have a new user, then these actions will take place **/
 
 
-		/** If we do not have a new user, then these actions will take place **/
+  //		pollSTDIN(cmd_buf, user_list, pipe_SERVER_writing_to_child ,pipe_SERVER_reading_from_child);
 
-
-//		pollSTDIN(cmd_buf, user_list, pipe_SERVER_writing_to_child ,pipe_SERVER_reading_from_child);
-
-		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
+  		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 	}
 }
 
