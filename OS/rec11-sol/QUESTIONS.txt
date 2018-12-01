@@ -1,0 +1,30 @@
+                           ________________________
+
+                            Recitation 11 QUESTIONS
+                           ________________________
+
+
+PROBLEM 1: Fix the race condition
+=================================
+
+The program race.c is trying to increment the global variable 'sum' using multiple threads.
+There are 100 threads in the program. Each thread runs a loop of 100 iterations to add '1' to the global sum in each iteration.
+And final value of the sum should be 10000. (Since 100 threads running 100 iterations each)
+
+Fix the race condition in the program so that the final sum is 10000.
+
+
+PROBLEM 2: Printing odd and even numbers using threads
+===================================================================
+
+Complete the odds_evens.c program to print the numbers from 1 to 20 sequentially using 4 threads.
+  -- Each one of the 4 threads will print out 5 numbers which makes a total of 20 numbers.
+  -- Two threads should print only the even numbers and other two threads should print only the odd numbers
+  -- All the threads must co-ordinate using locks to print the number sequentially
+
+You can use busy waiting while acquiring the locks.
+
+PROBLEM 3: Condition variables
+===================================================================
+
+Modify the above solution using condition variables instead of busy waiting.

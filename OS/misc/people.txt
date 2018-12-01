@@ -1,0 +1,8 @@
+Grant	20
+Luke	12
+Blake	75
+Gerald	43
+Jack	1
+Gert	54
+Lisa	32
+Mark	44
