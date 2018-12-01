@@ -11,6 +11,7 @@
 #include <time.h>
 #include "util.h"
 #include <stdbool.h>
+//#include "slice.h"
 
 #define MAX_THREADS 100
 #define MAX_queue_len 100
@@ -41,6 +42,17 @@ void * dynamic_pool_size_update(void *arg) {
   while(1) {
     // Run at regular intervals
     // Increase / decrease dynamically based on your policy
+  }
+}
+/**********************************************************************************/
+
+/* ************************************ Array Operations ********************************/
+void slice_queue(request_t* src, request_t* dest, int start, int end)
+{
+  int pos_in_dest =0;
+  for(int i=start; i < end; i++){
+    dest[pos_in_dest] = src[i];
+    pos_in_dest++;
   }
 }
 /**********************************************************************************/
@@ -84,27 +96,44 @@ int readFromDisk(/*necessary arguments*/) {
 /**********************************************************************************/
 
 /* ************************************ Queue Code ********************************/
-request_t* QUEUE; //Create a global queue accessible by all threads.
-int QUEUE_LEN = 0; //Length of the queue. Init at zero.
+request_t* QUEUE; //Create a global queue accessible by all threads. THIS IS A POINTER. This is important to remember
+int QUEUE_LEN = 0; //Length of the queue. Init at zero, change to however many queue requests we have.
+
 // Function to add the request and its file content into the queue
-//void addIntoQueue(char *mybuf, char *memory , int memory_size){
-//  // It should add the request at an index according to the queue replacement policy
-//  // Make sure to allocate/free memeory when adding or replacing queue entries
-//}
 void addIntoQueue(int fd, void* request){
-  request_t new_request;
+//  printf("The size of the queue before here was %d. The size of a request is %d\n", sizeof(QUEUE),sizeof(request_t));
+  QUEUE_LEN +=1; //increment the length. The highest index will be QUEUE_LEN-1.
+  request_t new_request; //Create a new request. Put the request data in this request struct.
   new_request.request = request;
   new_request.fd = fd;
-  printf("I made it this far through addIntoQueue()\n");
-  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN+1)* sizeof(request_t));
-  tmpQ[QUEUE_LEN] =  new_request;
-  QUEUE_LEN +=1;
-  printf("Successfully added to the queue!\n");
+  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN)* sizeof(request_t)); //Create a temporary queue
+  tmpQ[QUEUE_LEN] =  new_request; //Add the request at the end of the q
+//  tmpQ = QUEUE; //Put the current Queue in the place pointed to by tmp
+//  free(QUEUE); //Remove the data that was in queue
+  QUEUE = tmpQ; //Assign new queue to q.
+  printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN].request);
+  printf("Got this far in addIntoQueue\n");
+//  free(tmpQ); //Free the memory at the place of tmpQ
+  printf("Successfully added to the queue! Queue is now size %d\n", sizeof(tmpQ));
 }
 
-// clear the memory allocated to the cache
+//Function to remove the first request in the queue, and decrement the queue length by one.
+request_t removeRequestFromQueue(){
+  printf("%s\n", QUEUE[0].request);
+  return *QUEUE; //Should give the first element in the queue.
+//  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
+//  slice_queue(QUEUE, tmpQ, (int)1, QUEUE_LEN); //Copy from the first position to the last of the queue
+//  QUEUE = tmpQ; //Assign the new queue to the global queue pointer.
+//  free(tmpQ); //Free the temporary queue pointer.
+}
+
+// clear the memory allocated to the queue
 void deleteQueue(){
-  // De-allocate/free the cache memory
+  // De-allocate/free the queue memory
+  request_t* tmpQ = malloc(0);
+  QUEUE = tmpQ;
+  QUEUE_LEN = 0;
+  printf("I have deleted everything from the Queue\n");
 }
 // Function to initialize the queue
 void initQueue(){
@@ -130,6 +159,7 @@ int getCurrentTimeInMills() {
 }
 
 /**********************************************************************************/
+
 
 // Function to receive the request from the client and add to the queue
 void * dispatch(void *arg) {
@@ -171,7 +201,12 @@ void * worker(void *arg) {
     // Start recording time
     int start = getCurrentTimeInMills(); // Get a starting timestamp
 
+
     // Get the request from the queue
+//    request_t cur_request = removeRequestFromQueue();
+//      removeRequestFromQueue();
+//    printf("here in worker thread\n");
+//    printf("The current request has fd %d and message %s\n", cur_request.fd, cur_request.request);
 
     // Get the data from the disk or the cache
 
@@ -244,7 +279,7 @@ int main(int argc, char **argv) {
   init(port);
   initCache();
 
-  // Create dispatcher and worker threads
+//   Create dispatcher and worker threads
 //  pthread_t workers;
 //  int worker_count = 0;
 //  for(worker_count = 0; worker_count < num_workers; worker_count++){
