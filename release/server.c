@@ -1,4 +1,4 @@
-#include <stdio.h> 
+#include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@
 /* -----------Functions that implement server functionality -------------------------*/
 
 /*
- * Returns the empty slot on success, or -1 on failure
+ * Returns the index of th first empty slot in the user list on success, or -1 on failure
  */
 int find_empty_slot(USER * user_list) {
 	// iterate through the user_list and check m_status to see if any slot is EMPTY
@@ -30,20 +30,18 @@ int find_empty_slot(USER * user_list) {
  */
 int list_users(int idx, USER * user_list)
 {
-	// iterate through the user list
-	// if you find any slot which is not empty, print that m_user_id
-	// if every slot is empty, print "<no users>""
-	// If the function is called by the server (that is, idx is -1), then printf the list
+  // If the function is called by the server (that is, idx is -1), then printf the list
 	// If the function is called by the user, then send the list to the user using write() and passing m_fd_to_user
-	// return 0 on success
 	int i, flag = 0;
 	char buf[MAX_MSG] = {}, *s = NULL;
 
 	/* construct a list of user names */
 	s = buf;
-	strncpy(s, "---connecetd user list---\n", strlen("---connecetd user list---\n"));
-	s += strlen("---connecetd user list---\n");
+	strncpy(s, "---connected user list---\n", strlen("---connected user list---\n"));
+	s += strlen("---connected user list---\n");
 	for (i = 0; i < MAX_USER; i++) {
+    // iterate through the user list
+  	// if you find any slot which is not empty, print that m_user_id
 		if (user_list[i].m_status == SLOT_EMPTY)
 			continue;
 		flag = 1;
@@ -54,9 +52,10 @@ int list_users(int idx, USER * user_list)
 	}
 	if (flag == 0) {
 		strcpy(buf, "<no users>\n");
+    // if every slot is empty, print "<no users>""
 	} else {
 		s--;
-		strncpy(s, "\0", 1);
+		strncpy(s, "\0", 1); //Place Null character at end of string buffer.
 	}
 
 	if(idx < 0) {
@@ -64,26 +63,27 @@ int list_users(int idx, USER * user_list)
 		printf("\n");
 	} else {
 		/* write to the given pipe fd */
-		if (write(user_list[idx].m_fd_to_user, buf, strlen(buf) + 1) < 0)
-			perror("writing to server shell");
+		if (write(user_list[idx].m_fd_to_server, buf, strlen(buf) + 1) < 0)
+			perror("failed to write user_list to server shell");
 	}
 
-
-	return 0;
+	return 0; 	// return 0 on success
 }
 
 /*
  * add a new user
  */
-int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_child, int pipe_to_parent)
+int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_user, int pipe_to_server)
 {
 	// populate the user_list structure with the arguments passed to this function
 	USER* next_user = (USER*) malloc(sizeof(USER));
 	next_user->m_pid = pid;
 	strcpy(next_user->m_user_id,user_id);
-	next_user->m_fd_to_server = pipe_to_parent;
-	next_user->m_fd_to_user = pipe_to_child;
-	int place_for_next_user  = find_empty_slot(user_list);
+	next_user->m_fd_to_server = pipe_to_server;
+	next_user->m_fd_to_user = pipe_to_user;
+	int place_for_next_user = find_empty_slot(user_list);  //if for example someone leaves the server, we may want the
+                                                         //next person who enters to take their spot in the user list, instead
+                                                         //of appending them to the end.
 	user_list[place_for_next_user] = *next_user;
 	// return the index of user added
 	return place_for_next_user;
@@ -92,38 +92,35 @@ int add_user(int idx, USER * user_list, int pid, char * user_id, int pipe_to_chi
 /*
  * Kill a user
  */
-void kill_user(int idx, USER * user_list) {
+void kill_user(int child_idx, USER * user_list) {
 	// kill a user (specified by idx) by using the systemcall kill()
-	printf("They are at index: %d\n", idx);
-	USER dude = user_list[idx];
-	printf("This user has a pid of %d\n", dude.m_pid);
+	USER dude = user_list[child_idx];
+	printf("Killing ID: %s\n", dude.m_user_id);
 	int pid_to_kill = dude.m_pid;
-	char buf[5];
+	char buf[10];
 	sprintf(buf, "%d", pid_to_kill);
-	printf("PID to kill is: %s\n", buf);
 	if (kill(pid_to_kill, SIGKILL) < 0) {
-		printf("Failed to kill the child process\n");
-	}; // The system call to kill the user
+		printf("Failed to kill the selected USER\n");
+	}; // The system call to kill the user client
 	int status;
 	waitpid(pid_to_kill, &status, 0);
-	printf("Killed child process: %d\n", pid_to_kill);
+	printf("Killed client process: %d\n", pid_to_kill);
 	if (kill(pid_to_kill-1, SIGKILL) < 0) {
-		printf("Failed to kill the child process\n");
-	}; // The system call to kill the user
+		printf("Failed to kill the child proecess\n");
+	}; // The system call to kill the child process
 	int status2;
 	waitpid(pid_to_kill-1, &status, 0);
 	printf("Killed child process: %d\n", pid_to_kill-1);
 }
 /*
- * Perform cleanup actions after the used has been killed
+ * Perform cleanup actions after the user has been killed
  */
-void cleanup_user(int idx, USER * user_list)
+void cleanup_user(int child_idx, USER * user_list)
 {
-	USER user_cleaning = user_list[idx];
-	printf("%s\n", user_list[idx].m_user_id);
+	USER user_cleaning = user_list[child_idx];
+	printf("%s\n", user_list[child_idx].m_user_id);
 	// m_pid should be set back to -1
-//	memset(user_cleaning.m_pid,-1, sizeof(user_cleaning.m_pid));
-	user_list[idx].m_pid = -1;
+	user_cleaning.m_pid = -1;
 	// m_user_id should be set to zero, using memset()
 	memset(user_cleaning.m_user_id, 0, sizeof(user_cleaning.m_user_id));
 	// close all the fd
@@ -132,21 +129,19 @@ void cleanup_user(int idx, USER * user_list)
 	// set the value of all fd back to -1
 	user_cleaning.m_fd_to_user =  -1;
 	user_cleaning.m_fd_to_server = -1;
-	printf("got here\n");
 	// set the status back to empty
 	user_cleaning.m_status = SLOT_EMPTY; //Set it to the empty val
-	user_list[idx] = user_cleaning;
-	printf("%s\n", user_list[idx].m_user_id);
+	user_list[child_idx] = user_cleaning;
 }
 
 /*
  * Kills the user and performs cleanup
  */
-void kick_user(int idx, USER * user_list) {
+void kick_user(int user_idx, USER * user_list) {
 	// should kill_user()
-	kill_user(idx, user_list);
+	kill_user(user_idx, user_list);
 	// then perform cleanup_user()
-	cleanup_user(idx, user_list);
+	cleanup_user(user_idx, user_list);
 }
 
 /*
@@ -157,6 +152,14 @@ int broadcast_msg(USER * user_list, char *buf, char *sender)
 	//iterate over the user_list and if a slot is full, and the user is not the sender itself,
 	//then send the message to that user
 	//return zero on success
+  for (int i = 0; i < MAX_USER; i++) {
+    if (user_list[i].m_status == SLOT_EMPTY) { // Reached the last user
+      continue;
+    }
+    else {
+      write(user_list[i].m_fd_to_user, buf, MAX_CMD_LENGTH);
+    }
+  }
 	return 0;
 }
 
@@ -176,11 +179,11 @@ int find_user_index(USER * user_list, char * user_id)
 {
 	// go over the  user list to return the index of the user which matches the argument user_id
 	// return -1 if not found
-	int i, user_idx = -1;
+	int i;
 
 	if (user_id == NULL) {
 		fprintf(stderr, "NULL name passed.\n");
-		return user_idx;
+		return -1;
 	}
 	for (i=0;i<MAX_USER;i++) {
 		if (user_list[i].m_status == SLOT_EMPTY)
@@ -189,29 +192,32 @@ int find_user_index(USER * user_list, char * user_id)
 			return i;
 		}
 	}
-
+  fprintf(stderr, "No user found with user_id: %s\n", user_id);
 	return -1;
 }
 
 /*
- * given a command's input buffer, extract name
+ * given a command's input buffer, extract the name into user_name
  */
 int extract_name(char * buf, char * user_name)
 {
 	char inbuf[MAX_MSG];
-    char * tokens[16];
-    strcpy(inbuf, buf);
+  char * tokens[16];
+  strcpy(inbuf, buf);
 
-    int token_cnt = parse_line(inbuf, tokens, " ");
+  int token_cnt = parse_line(inbuf, tokens, " ");
 
-    if(token_cnt >= 2) {
-        strcpy(user_name, tokens[1]);
-        return 0;
-    }
+  if(token_cnt >= 2) {
+    strcpy(user_name, tokens[1]);
+    return 0;
+  }
 
     return -1;
 }
 
+/*
+ * given a message input buffer, extract the text into text parameter
+ */
 int extract_text(char *buf, char * text)
 {
     char inbuf[MAX_MSG];
@@ -241,15 +247,9 @@ void send_p2p_msg(int idx, USER * user_list, char *buf)
 
 	// get the target user by name using extract_name() function
 	// find the user id using find_user_index()
-	// if user not found, write back to the original user "User not found", using the write()function on pipes. 
+	// if user not found, write back to the original user "User not found", using the write()function on pipes.
 	// if the user is found then write the message that the user wants to send to that user.
 }
-
-//takes in the filename of the file being executed, and prints an error message stating the commands and their usage
-void show_error_message(char *filename)
-{
-}
-
 
 /*
  * Populates the user list initially
@@ -271,15 +271,16 @@ void init_user_list(USER * user_list) {
 }
 
 /* ---------------------End of the functions that implementServer functionality -----------------*/
-void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child[], int pipe_SERVER_reading_from_child[]){
-		read(STDIN_FILENO, cmd_buf, MAX_CMD_LENGTH);
-		char preserve_cmd_buf[MAX_CMD_LENGTH];
-		strcpy(preserve_cmd_buf,cmd_buf); //Preserve the entire string in cases where we are broadcasting. Could just make a copy later
+
+// parse_message parses, and executes the commmand given in cmd_buf. If no command is given, it broadcast the message
+// idx is the index of the user who sent the message, or -1 if the server sent the message
+void parse_message(char* cmd_buf, USER user_list[], int idx){
 		/** Wrap this section as a parsing function **/
-//		printf("START OF SPLITTING INPUT\n");
-		char* arg_array[100] = {"\0"}; //Holds the arguments we are about to split.
+		char* arg_array[MAX_MSG] = {"\0"}; //Holds the arguments we are about to split.
 		char* pch; //This holds the split string, imagine it as another arg array
-		pch = strtok (cmd_buf," ");
+    char tmp[MAX_MSG];
+    strcpy(tmp, cmd_buf);
+		pch = strtok (tmp," ");
 		int length_of_cmd_array = 0; // This tells us how many arguments are in the string.
 		while (pch != NULL)
 		{
@@ -303,57 +304,48 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 			char tmp[MAX_CMD_LENGTH] = {"\0"};
 			strncpy(tmp, arg_array[0], strlen(arg_array[0])-1); //Trims new lines
 			arg_array[0] = tmp;
-			printf("%s", arg_array[0]);
+			printf("array is one long: %s", arg_array[0]);
 		}
 		/**This block should trim any excess char, specifically, the trailing newline.
 		 * Make sure to take care of excess malloc **/
 		for(int i = 0; i < length_of_cmd_array; i++) {
 			printf("Position %d: %s\n", i, arg_array[i]);
 		}
-//		printf("END OF INPUT PROCESSING\n");
 
-	/** **/
 	// This value is the value that indicates what position in the commands array in util.c the command was
 		// found at
 		int found = find_command_type(arg_array[0]);
 		//In this block the decision as to what the input meant is done here.
-		/** List **/
-		if(found == 0){
-			printf("List command was entered");
-			list_users(-1, user_list); //See definition of list_users, must be called with -1 to make sense.
-			cmd_buf = "\0";
-		}
-			/** Kick **/
-		else if(found ==1){
-			char* user_to_delete = arg_array[1];
-			printf("Kick command was entered for user: %s\n",arg_array[1]);
-			int user_index = find_user_index(user_list, user_to_delete);
-			kick_user(user_index, user_list);
-			cmd_buf = "\0";
-		}
-			/** P2P **/
-		else if(found ==2){
-			print_prompt("admin");
-			cmd_buf = "\0";
-		}
-			/** Seg **/
-		else if(found ==3){
-			print_prompt("admin");
-			cmd_buf = "\0";
-		}
-			/** Exit **/
-		else if(found == 4){
-			print_prompt("admin");
-			cmd_buf = "\0";
-		}
-			/** If no particular command, it is a broadcast **/
-		else if(found == 5){
-			printf("Broadcasting message to all users \n");
-			/** This block executes if told to broadcast **/
-			close(pipe_SERVER_writing_to_child[0]);
-			write(pipe_SERVER_writing_to_child[1], preserve_cmd_buf, MAX_MSG);
-			printf("pipe to child has contents: %s\n", preserve_cmd_buf);
-		}
+    switch (found){
+  		case LIST:
+        /** List **/
+  			printf("List command was entered");
+  			list_users(-1, user_list); //See definition of list_users, must be called with -1 to make sense.
+        break;
+   		case KICK:
+        /** Kick **/
+   			printf("Kick command was entered for user: %s\n",arg_array[1]);
+        int child_idx = find_user_index(user_list, arg_array[1]);
+        if (child_idx != -1)
+   			  kick_user(child_idx, user_list);
+         break;
+   		case P2P:
+         /** P2P **/
+         break;
+   		case SEG:
+         /** Seg **/
+         break;
+   		case EXIT:
+         /** Exit **/
+         break;
+   		default:
+         /** No Command Entered **/
+   			printf("Broadcasting message to all users \n"); //when no command is entered,
+                                                        //broadcast the message to everyone
+        broadcast_msg(user_list, cmd_buf, "admin");
+	 	}
+		//Should always print the admin prompt before exiting to get ready for the next input
+    cmd_buf = "\0";
 		print_prompt("admin");
 }
 
@@ -361,14 +353,18 @@ void pollSTDIN(char* cmd_buf, USER user_list[], int pipe_SERVER_writing_to_child
 int main(int argc, char * argv[])
 {
 	int nbytes;
-	setup_connection("YOUR_UNIQUE_ID"); // Specifies the connection point as argument.
+	setup_connection("Project2_59"); // Specifies the connection point as argument.
 
 	USER user_list[MAX_USER];
 	init_user_list(user_list);   // Initialize user list
 
-	char buf[MAX_MSG]; 
+	char buf[MAX_MSG];
 	fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 	print_prompt("admin");
+
+
+
+
 	//
 	int pipe_SERVER_reading_from_child[2];
 	int pipe_SERVER_writing_to_child[2];
@@ -394,19 +390,24 @@ int main(int argc, char * argv[])
 		// Add a new user information into an empty slot
 		// poll child processes and handle user commands
 //					close(pipe_SERVER_reading_from_child[1]);
+
+    //for (int i = 0; i < MAX_USER; i++) {
+      ///if(read(user_list[i].m_fd_to_server, rx_buf, MAX_MSG > 0)) {
+      //  printf("I suk: %s\n", rx_buf);
+      //}
+    //}
+
 		if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
 			printf("Server received from child: %s\n", rx_buf);
 //						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
 			print_prompt("admin");
 		}
 		// Poll stdin (input from the terminal) and handle admnistrative command
-		/** In this block, we are polling the input **/
-
 		if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
-			printf("%s\n", stdin);
-			pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
-			/** This block executes if told to broadcast **/
+			printf("Server recceived from STDIN%s\n", stdin);
+			parse_message(stdin, user_list, -1);
 		}
+
 
 		// Handling a new connection using get_connection
 		/** If we find a new connection, then we have a server and child process to take care of.**/
@@ -444,8 +445,7 @@ int main(int argc, char * argv[])
 
 				printf("I am a child process with pid: %d. I am at index: %d\n", pid, index_of_new_user);
 				/** These users should be children or clients? **/
-				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_reading_from_child,
-				         pipe_SERVER_writing_to_child);
+				add_user(index_of_new_user, user_list, pid, user_id, pipe_SERVER_writing_to_child[1], pipe_SERVER_reading_from_child[0]);
 				list_users(-1, user_list); //When list users is called by negative one, it indicates the server
 				//asking for the information. The last argument turns on or off verbose mode.
 				print_prompt("admin");
@@ -458,29 +458,83 @@ int main(int argc, char * argv[])
 				while(1) {
 					usleep(SLEEP_TIME);
 //			poll users and SERVER
+					//Read from the SERVER process trying to talk to the client
+//					close(pipe_child_reading_from_server[1]);
 					char tmp[MAX_MSG];
+//					fcntl(pipe_SERVER_writing_to_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+
+
+//					fcntl(pipe_SERVER_writing_to_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
+//					fcntl(pipe_SERVER_reading_from_child[1], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK);
 
 					if(read(pipe_SERVER_writing_to_child[0], tmp, MAX_MSG) > 0){
 						printf("The child process received: %s\n", tmp);
+//						open(pipe_child_reading_from_server[1], O_WRONLY);
+//						close(pipe_child_reading_from_server[0]);
 						write(pipe_child_reading_from_server[1], tmp, MAX_MSG);
+//						open(pipe_child_reading_from_server[0], O_RDONLY);
+//						close(pipe_child_reading_from_server[1]);
 						print_prompt("admin");
 					}
 					char tx_buf[MAX_MSG];
 
 					if (read(pipe_child_writing_to_server[0], tx_buf, MAX_MSG) > 0){
 						printf("Child received from client: %s\n", tx_buf);
+//						open(pipe_child_writing_to_server[1], O_WRONLY);
+//						//Write the message received from the client, that is now in the child, to the server
+//						close(pipe_SERVER_reading_from_child[0]);
 						write(pipe_SERVER_reading_from_child[1], tx_buf, MAX_MSG);
 						printf("Child wrote to the server\n");
+//						open(pipe_SERVER_reading_from_child[0], O_RDONLY);
 						print_prompt("admin");
 					}
 
 				}
 			}
+			/** The server process at one time was part of the fork and this was wrong, now we want it to be the
+			 * identity of main and to have many children, as is the setup now.
+			 */
+
+				// Server process:
+//			if(pid>0){
+//				while(1) {
+//					usleep(SLEEP_TIME);
+//					char tx_buf[MAX_MSG];
+//					char rx_buf[MAX_MSG];
+//					char stdin[MAX_MSG] = {"\0"};
+//					fcntl(0, F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
+//					fcntl(pipe_SERVER_reading_from_child[0], F_SETFL, fcntl(0, F_GETFL)| O_NONBLOCK); //Makes reads of stdin non-blocking
+//					// Add a new user information into an empty slot
+//					// poll child processes and handle user commands
+////					close(pipe_SERVER_reading_from_child[1]);
+//					if(read(pipe_SERVER_reading_from_child[0], rx_buf, MAX_MSG) > 0) {
+//						printf("Server received from child: %s\n", rx_buf);
+////						open(pipe_SERVER_reading_from_child[1], O_WRONLY);
+//						print_prompt("admin");
+//					}
+//
+//					// Poll stdin (input from the terminal) and handle admnistrative command
+//					/** In this block, we are polling the input **/
+//
+//					if(read(STDIN_FILENO,stdin, MAX_MSG) > 0) { //If there is data in stdin, put it into a buffer
+//						printf("%s\n", stdin);
+//						pollSTDIN(stdin, user_list, pipe_SERVER_writing_to_child, pipe_SERVER_reading_from_child);
+//						/** This block executes if told to broadcast **/
+//					}
+//				}
+//			}
+//			else{
+//				perror("pipe failed\n");
+//				exit(-1);
+//			}
 		}
 
 
 		/** If we do not have a new user, then these actions will take place **/
-	
+
+
+//		pollSTDIN(cmd_buf, user_list, pipe_SERVER_writing_to_child ,pipe_SERVER_reading_from_child);
+
 		/* ------------------------YOUR CODE FOR MAIN--------------------------------*/
 	}
 }
