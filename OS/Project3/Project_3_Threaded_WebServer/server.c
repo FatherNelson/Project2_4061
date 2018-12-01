@@ -102,25 +102,36 @@ int QUEUE_LEN = 0; //Length of the queue. Init at zero, change to however many q
 // Function to add the request and its file content into the queue
 void addIntoQueue(int fd, void* request){
 //  printf("The size of the queue before here was %d. The size of a request is %d\n", sizeof(QUEUE),sizeof(request_t));
-  QUEUE_LEN +=1; //increment the length. The highest index will be QUEUE_LEN-1.
   request_t new_request; //Create a new request. Put the request data in this request struct.
   new_request.request = request;
   new_request.fd = fd;
-  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN)* sizeof(request_t)); //Create a temporary queue
-  tmpQ[QUEUE_LEN] =  new_request; //Add the request at the end of the q
+  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN+1)* sizeof(request_t)); //Create a temporary queue
+  tmpQ[QUEUE_LEN+1] =  new_request; //Add the request at the end of the q
 //  tmpQ = QUEUE; //Put the current Queue in the place pointed to by tmp
 //  free(QUEUE); //Remove the data that was in queue
   QUEUE = tmpQ; //Assign new queue to q.
-  printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN].request);
+  printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN+1].request);
+  QUEUE_LEN +=1; //increment the length. The highest index will be QUEUE_LEN-1.
   printf("Got this far in addIntoQueue\n");
 //  free(tmpQ); //Free the memory at the place of tmpQ
   printf("Successfully added to the queue! Queue is now size %d\n", sizeof(tmpQ));
 }
 
-//Function to remove the first request in the queue, and decrement the queue length by one.
-request_t removeRequestFromQueue(){
-  printf("%s\n", QUEUE[0].request);
-  return *QUEUE; //Should give the first element in the queue.
+//Function to remove the first request in the queue, and decrement the queue length by one. Returns -1 if no queue
+//entries, and zero if there are.
+int removeRequestFromQueue(request_t* this_request){
+  if(QUEUE_LEN == 0){
+    return -1;
+  }
+  else{
+    printf("Entered the remove request from q function\n");
+    printf("%s\n", (char*)QUEUE[QUEUE_LEN].request);
+    this_request = QUEUE[0].request;
+    request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
+    QUEUE = tmpQ;
+    QUEUE_LEN = QUEUE_LEN-1;
+    return 0;
+  }
 //  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
 //  slice_queue(QUEUE, tmpQ, (int)1, QUEUE_LEN); //Copy from the first position to the last of the queue
 //  QUEUE = tmpQ; //Assign the new queue to the global queue pointer.
@@ -197,14 +208,17 @@ void * dispatch(void *arg) {
 void * worker(void *arg) {
   printf("Worker thread number %d initialized\n", arg);
    while (1) {
-    int time_of_request = 0; //Where the time measured will be stored.
-    // Start recording time
-    int start = getCurrentTimeInMills(); // Get a starting timestamp
+     int time_of_request = 0; //Where the time measured will be stored.
+     // Start recording time
+     int start = getCurrentTimeInMills(); // Get a starting timestamp
 
 
-    // Get the request from the queue
+      // Get the request from the queue
+      request_t cur_request;
+      if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
+        removeRequestFromQueue(&cur_request);
+      }
 //    request_t cur_request = removeRequestFromQueue();
-//      removeRequestFromQueue();
 //    printf("here in worker thread\n");
 //    printf("The current request has fd %d and message %s\n", cur_request.fd, cur_request.request);
 
@@ -216,7 +230,7 @@ void * worker(void *arg) {
 
     // Log the request into the file and terminal
 //    printf("Worker thread made a request\n");
-    return NULL;
+//    return NULL;
 
     // return the result
   }
@@ -280,19 +294,19 @@ int main(int argc, char **argv) {
   initCache();
 
 //   Create dispatcher and worker threads
-//  pthread_t workers;
-//  int worker_count = 0;
-//  for(worker_count = 0; worker_count < num_workers; worker_count++){
-//    void* args;
-//    args = worker_count;
-//    pthread_create(&workers, NULL, worker, worker_count);
-//  }
+  pthread_t workers;
+  int worker_count = 0;
+  for(worker_count = 0; worker_count < num_workers; worker_count++){
+    void* args;
+    args = worker_count;
+    pthread_create(&workers, NULL, worker, worker_count);
+  }
   pthread_t dispatchers;
   int dispatch_count = 0;
   for(dispatch_count = 0; dispatch_count < num_dispatcher; dispatch_count++){
     pthread_create(&dispatchers, NULL, dispatch, dispatch_count);
-    pthread_join(&dispatchers[0], NULL);
   }
+  pthread_join(&dispatchers[0], NULL);
 
   // Clean up
   printf("Successfully Started Up\n");
