@@ -112,25 +112,23 @@ void addIntoQueue(int fd, void* request){
   QUEUE = tmpQ; //Assign new queue to q.
   printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN+1].request);
   QUEUE_LEN +=1; //increment the length. The highest index will be QUEUE_LEN-1.
-  printf("Got this far in addIntoQueue\n");
+//  printf("Got this far in addIntoQueue\n");
 //  free(tmpQ); //Free the memory at the place of tmpQ
   printf("Successfully added to the queue! Queue is now size %d\n", sizeof(tmpQ));
 }
 
 //Function to remove the first request in the queue, and decrement the queue length by one. Returns -1 if no queue
 //entries, and zero if there are.
-int removeRequestFromQueue(request_t* this_request){
-  if(QUEUE_LEN == 0){
-    return -1;
-  }
-  else{
-    printf("Entered the remove request from q function\n");
-    printf("%s\n", (char*)QUEUE[QUEUE_LEN].request);
-    this_request = QUEUE[0].request;
+request_t removeRequestFromQueue(){
+  if(QUEUE_LEN > 0){
+    request_t this_request = QUEUE[QUEUE_LEN];
+//    printf("%s\n", (char*)QUEUE[QUEUE_LEN].request);
     request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
-    QUEUE = tmpQ;
+    //TODO: Assign the data already in QUEUE from 1->QUEUE_LEN and assign to the tmp var.
+    QUEUE = tmpQ; //Assign this
     QUEUE_LEN = QUEUE_LEN-1;
-    return 0;
+    printf("Successfully exited the remove request function. Removed request: %s\n", (char*)this_request.request);
+    return this_request; //Added back the one to accomodate for the fact that we already changed the value of QUEUE_LEN
   }
 //  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
 //  slice_queue(QUEUE, tmpQ, (int)1, QUEUE_LEN); //Copy from the first position to the last of the queue
@@ -215,8 +213,10 @@ void * worker(void *arg) {
 
       // Get the request from the queue
       request_t cur_request;
+      int request_rx =-1; //Set by the removeRequestFromQueue function below.
       if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
-        removeRequestFromQueue(&cur_request);
+        cur_request = removeRequestFromQueue();
+        printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
       }
 //    request_t cur_request = removeRequestFromQueue();
 //    printf("here in worker thread\n");
