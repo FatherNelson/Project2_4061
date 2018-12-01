@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
   }
 
   for(int i=0; i<TOT_THREADS; i++) {                 // Wait for all threads to complete
-    pthread_join(threads[i], NULL);
+    pthread_join(threads[i], NULL);  // This is the equivalent of a wait statement for threads.
   }
 
   printf("main: count is %d\n",count);

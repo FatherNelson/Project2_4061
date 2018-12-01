@@ -10,7 +10,7 @@
 
 // data the server has and clients want: pairings of name and email
 char *data[][2] = {
-  {"Jon Weissman"         , "jon@cs.umn.edu"},
+  {"JonWeissman"         , "jon@cs.umn.edu"},
   {"Chris Kauffman"       ,"kauffman@umn.edu"},
   {"Christopher Jonathan" ,"jonat003@umn.edu"},
   {"Amy Larson"           ,"larson@cs.umn.edu"},
@@ -43,6 +43,7 @@ typedef struct {
   char email[256];              // email associated with name
 } lookup_t;
 
+//Keeps track if we have been signalled.
 int signalled = 0;
 void handle_signals(int sig_num){
   signalled = 1;

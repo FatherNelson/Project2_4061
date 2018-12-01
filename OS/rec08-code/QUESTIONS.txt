@@ -16,6 +16,13 @@ A
   establish the message queues used for communication. How many message
   queues are there?
 
+Answer:
+
+	In client, the lines 27-30 are creating the message queue. In server, it is 61-64.
+	They are functionally similar in both cases. ftok identifies the file, and then msgget
+	used to create a message queue between the two files if one does not already exist.
+	There are two message queues.
+
 
 B
 ~
@@ -25,6 +32,16 @@ B
   first. Describe each argument of the send/receive functions and its
   purpose. You may wish to consult the textbook or manual page for the
   functions to get more information.
+
+Answer:
+	The server sends the request struct back to the client, in a block the size of this struct, with the information
+	pointed to by allocated space that holds the request information. The server reads from the clients waiting for a
+	request before it performs a lookup and returns the information of the user asked for. It should be noted that msgrcv
+	will block in this loop until a signal is received and caught, the message queue is removed, or a message of the
+	requested type becomes available. In the client, there is no such polling loop. The client reads for a name and reports
+	a syntax error if no name is reported. The client then sends a request to the server with only the name and type filled
+	out in the request. It then waits to find a message in the message queue with adequate information to fill out the
+	user information after receiving the message from the user. It terminates after outputting the information it asked for.
 
 
 C
@@ -36,6 +53,11 @@ C
   letters associated with print statements like "A" and "D". Note any
   operations that might happen in an arbitrary order.
 
+The client asks for information by sending a pid (which is used as the mtype) as well as the name. The server receives
+the name and searches the table for email information. Upon discovering the user information, it fills out a response
+with the requested information and places it in the message queue for the client to read. The client then prints out the
+contents of the response.
+
 
 D
 ~
@@ -44,6 +66,10 @@ D
   accessing the To-Client queue simultaneously. Describe why there is
   not a problem in this setting. Look carefully at the arguments used in
   the `msgrcv()' call in the client.
+
+  All clients will block until a message of their mtype is discovered. Because each client has its own type (in this case,
+  the pid associated with it), you could have n many clients running and until a message is found for the client the program
+  will continue to execute while the individual clients wait to find a message.
 
 
 E

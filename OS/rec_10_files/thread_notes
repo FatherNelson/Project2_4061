@@ -1,0 +1,39 @@
+All threads share the same static and global shit
+
+Each thread has own program counter, register set, and stack space
+
+Why threads?
+	Thread creation is much faster
+	Context switching between threads is freaky fast
+	Threads can be terminated easily
+	Communication between threads is faster
+
+What do all threads have of their own?
+	Thread ID
+	Stack, regsiters, program counter
+	Errno
+	Arithmetic/Buffer overflow
+
+Threads within the same process can communicate using shared memory.
+
+•int pthread_join(pthread_t thread, void **retval);
+	•wait until a thread exits
+•void pthread_exit(void *retval);
+	•exit from current thread
+
+int pthread_detach(pthread_tthread);
+	Causes a detachment of the thread
+		You cannot detach a thread when some other thread is joining it
+		A detached thread cannot be joined, it will just go away when it exits
+
+Attritbutes:
+	Can have things like detached state and scheduling policy
+	You specify NULL to get the defaults
+	Can override to specify custom options
+
+Here are some policy scheduling things:
+
+•intpthread_attr_setscope(pthread_attr_t*attr, intscope);
+•intpthread_attr_getscope(constpthread_attr_t*attr, int*scope);
+•intpthread_attr_setschedpolicy(pthread_attr_t*attr, intpolicy);
+•intpthread_attr_getschedpolicy(constpthread_attr_t*attr, int*policy);
