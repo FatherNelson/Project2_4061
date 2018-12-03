@@ -169,13 +169,13 @@ char* getContentType(char * mybuf) {
   char content_type[16]; //TODO: Change this to a sensical value.
   strcpy(content_type, &mybuf[dot_pos]); //https://stackoverflow.com/questions/12504657/copy-end-of-string-in-c
   printf("GOT CONTENT TYPE: %s\n", content_type);
-  if(content_type == ".html"){
+  if(strcmp(content_type, ".html") == 0){
     return "text/html";
   }
-  else if(content_type == ".jpg"){
+  else if(strcmp(content_type, ".jpg") == 0){
     return "image/jpeg";
   }
-  else if(content_type == ".gif"){
+  else if(strcmp(content_type, ".gif") == 0){
     return "image/gif";
   }
   else{
@@ -235,8 +235,9 @@ void * worker(void *arg) {
     if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
       cur_request = removeRequestFromQueue();
       printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
-      char content_type[16]; //TODO: Assign a size to buffers handling content size
+      char content_type[128]; //TODO: Assign a size to buffers handling content size
       strcpy(content_type, getContentType(cur_request.request));
+      printf("This request has a content type of %s\n", getContentType(cur_request.request)); // Show us the c-type
 
 
       /** Not originally like this, but it keeps from having unnecessary prints and searches. **/
@@ -255,11 +256,13 @@ void * worker(void *arg) {
         strcat(search, cur_request.request);
         printf("Have built the search string %s\n", search);
         int fd =-1; //The fd of the file we are pulling from the disk. -1 would indicate an error.
+        //TODO: Determine what kind of buffer to make, I simply made the first thing that open was writing to.
         char BUF[BUFF_SIZE]; // This is where we are storing the file. Will send this pointer to the cache.
         //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
         fd = open(search, O_RDONLY); //This is a non-blocking open call. We do this to make sure threads don't die.
         read(fd, BUF, BUFF_SIZE); //Read the data stored at that location into the Buffer we provide.
-        printf("%d\n", fd);
+        close(fd);
+        printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd,content_type,BUF,BUFF_SIZE);
         if(return_result(fd,content_type,BUF,BUFF_SIZE) == 0){
           printf("Successfully returned a result\n");
         };
