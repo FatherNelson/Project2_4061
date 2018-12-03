@@ -158,6 +158,26 @@ void initQueue(){
 char* getContentType(char * mybuf) {
   // Should return the content type based on the file type in the request
   // (See Section 5 in Project description for more details)
+  printf("%ld\n", strlen(mybuf));
+  int dot_pos = strcspn(mybuf, ".");
+  printf("%d\n",dot_pos);
+  printf("%s\n", &mybuf[dot_pos]);
+  char content_type[16]; //TODO: Change this to a sensical value.
+  strcpy(content_type, &mybuf[dot_pos]); //https://stackoverflow.com/questions/12504657/copy-end-of-string-in-c
+  printf("GOT CONTENT TYPE: %s\n", content_type);
+  if(content_type == ".html"){
+    return "text/html";
+  }
+  else if(content_type == ".jpg"){
+    return "image/jpeg";
+  }
+  else if(content_type == ".gif"){
+    return "image/gif";
+  }
+  else{
+    return "text/plain";
+  }
+
 }
 
 // This function returns the current time in milliseconds
@@ -211,16 +231,14 @@ void * worker(void *arg) {
      int start = getCurrentTimeInMills(); // Get a starting timestamp
 
 
-      // Get the request from the queue
-      request_t cur_request;
-      int request_rx =-1; //Set by the removeRequestFromQueue function below.
-      if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
-        cur_request = removeRequestFromQueue();
-        printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
-      }
-//    request_t cur_request = removeRequestFromQueue();
-//    printf("here in worker thread\n");
-//    printf("The current request has fd %d and message %s\n", cur_request.fd, cur_request.request);
+    // Get the request from the queue
+    request_t cur_request;
+    if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
+      cur_request = removeRequestFromQueue();
+      printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
+      getContentType(cur_request.request);
+    }
+
 
     // Get the data from the disk or the cache
 
@@ -229,8 +247,6 @@ void * worker(void *arg) {
     time_of_request = end-start;
 
     // Log the request into the file and terminal
-//    printf("Worker thread made a request\n");
-//    return NULL;
 
     // return the result
   }
