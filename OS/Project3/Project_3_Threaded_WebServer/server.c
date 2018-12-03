@@ -15,6 +15,7 @@
 
 #define MAX_THREADS 100
 #define MAX_queue_len 100
+#define MAX_cache_len 100
 #define MAX_CE 100
 #define INVALID -1
 #define BUFF_SIZE 1024
@@ -65,7 +66,13 @@ cache_entry_t* CACHE; //Create a global array for cache
 
 // Function to check whether the given request is present in cache
 int getCacheIndex(char *request){
-  /// return the index if the request is present in the cache
+  /// return the index if the request is present in the cache, return -1 if not in cache
+  for(int i = 0; i < MAX_cache_len; i++){
+    if(CACHE[i].request == request){
+      return i;
+    }
+  }
+  return -1;
 }
 
 // Function to add the request and its file content into the cache
@@ -130,10 +137,7 @@ request_t removeRequestFromQueue(){
     printf("Successfully exited the remove request function. Removed request: %s\n", (char*)this_request.request);
     return this_request; //Added back the one to accomodate for the fact that we already changed the value of QUEUE_LEN
   }
-//  request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
-//  slice_queue(QUEUE, tmpQ, (int)1, QUEUE_LEN); //Copy from the first position to the last of the queue
-//  QUEUE = tmpQ; //Assign the new queue to the global queue pointer.
-//  free(tmpQ); //Free the temporary queue pointer.
+  //TODO: Figure out what to do if the queue is empty, may be okay to just sit and churn, idk
 }
 
 // clear the memory allocated to the queue
@@ -198,7 +202,7 @@ void * dispatch(void *arg) {
     // Accept client connection
     char filename[BUFF_SIZE]; //Holds the filename
     int fd; // Descriptor for further request processing
-    fd = accept_connection(); //Gets the file descriptor
+    fd = accept_connection(); //Gets the file descriptor. This is a blocking call until we receive a connection
     printf("I found an fd of %d\n", fd);
     if(fd > 0) {
 
@@ -211,11 +215,6 @@ void * dispatch(void *arg) {
       addIntoQueue(fd, filename);
 
     }
-    else{
-      printf("I am a new dispatcher thread that did nothing\n");
-//      return NULL;
-    }
-
    }
    return NULL;
 }
@@ -236,11 +235,42 @@ void * worker(void *arg) {
     if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
       cur_request = removeRequestFromQueue();
       printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
-      getContentType(cur_request.request);
+      char content_type[16]; //TODO: Assign a size to buffers handling content size
+      strcpy(content_type, getContentType(cur_request.request));
+
+
+      /** Not originally like this, but it keeps from having unnecessary prints and searches. **/
+      // Get the data from the disk or the cache
+      if(getCacheIndex(cur_request.request) != -1){
+        printf("Found the request in the cache\n");
+      }
+      else{
+        printf("Have to search the disk for file %s.\n", cur_request.request);
+        /**This merely shows our working directory**/
+//        char dir[BUFF_SIZE];
+//        getcwd(dir, BUFF_SIZE);
+//        printf("%s\n", dir);
+        char search[BUFF_SIZE];
+        strcat(search, "./testing");
+        strcat(search, cur_request.request);
+        printf("Have built the search string %s\n", search);
+        int fd =-1; //The fd of the file we are pulling from the disk. -1 would indicate an error.
+        char BUF[BUFF_SIZE]; // This is where we are storing the file. Will send this pointer to the cache.
+        //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
+        fd = open(search, O_RDONLY); //This is a non-blocking open call. We do this to make sure threads don't die.
+        read(fd, BUF, BUFF_SIZE); //Read the data stored at that location into the Buffer we provide.
+        printf("%d\n", fd);
+        if(return_result(fd,content_type,BUF,BUFF_SIZE) == 0){
+          printf("Successfully returned a result\n");
+        };
+      }
     }
 
 
-    // Get the data from the disk or the cache
+
+    //These lines are just to show the working directory in this thread
+
+
 
     // Stop recording the time
     int end = getCurrentTimeInMills();
@@ -322,9 +352,11 @@ int main(int argc, char **argv) {
   for(dispatch_count = 0; dispatch_count < num_dispatcher; dispatch_count++){
     pthread_create(&dispatchers, NULL, dispatch, dispatch_count);
   }
-  pthread_join(&dispatchers[0], NULL);
+  pthread_join(&dispatchers[0], NULL); //TODO: Figure out if this joining strategy is the best way to do this or not.
 
   // Clean up
+  deleteCache();
+  deleteQueue();
   printf("Successfully Started Up\n");
   return 0;
 }
