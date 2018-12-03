@@ -36,6 +36,8 @@ typedef struct cache_entry {
     char *content;
 } cache_entry_t;
 
+/**GLOBAL VARIABLES**/
+int gfd; // Descriptor for further request processing
 /* ************************ Dynamic Pool Code ***********************************/
 // Extra Credit: This function implements the policy to change the worker thread pool dynamically
 // depending on the number of requests
@@ -201,18 +203,17 @@ void * dispatch(void *arg) {
     printf("Entered the while statement\n ");
     // Accept client connection
     char filename[BUFF_SIZE]; //Holds the filename
-    int fd; // Descriptor for further request processing
-    fd = accept_connection(); //Gets the file descriptor. This is a blocking call until we receive a connection
-    printf("I found an fd of %d\n", fd);
-    if(fd > 0) {
+    gfd = accept_connection(); //Gets the file descriptor. This is a blocking call until we receive a connection
+    printf("I found an fd of %d\n", gfd);
+    if(gfd > 0) {
 
       // Get request from the client
-      if(get_request(fd, filename) != 0){
+      if(get_request(gfd, filename) != 0){
         printf("Bad Request in Dispatch"); //TODO: Make sure this actually handles the error.
       }
 
       // Add the request into the queue
-      addIntoQueue(fd, filename);
+      addIntoQueue(gfd, filename);
 
     }
    }
@@ -259,11 +260,11 @@ void * worker(void *arg) {
         //TODO: Determine what kind of buffer to make, I simply made the first thing that open was writing to.
         char BUF[BUFF_SIZE]; // This is where we are storing the file. Will send this pointer to the cache.
         //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
-        fd = open(search, O_RDONLY); //This is a non-blocking open call. We do this to make sure threads don't die.
+        fd = open(search, O_RDWR); //This is a non-blocking open call. We do this to make sure threads don't die.
         read(fd, BUF, BUFF_SIZE); //Read the data stored at that location into the Buffer we provide.
         close(fd);
         printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd,content_type,BUF,BUFF_SIZE);
-        if(return_result(fd,content_type,BUF,BUFF_SIZE) == 0){
+        if(return_result(gfd,content_type,BUF,BUFF_SIZE) == 0){
           printf("Successfully returned a result\n");
         };
       }
