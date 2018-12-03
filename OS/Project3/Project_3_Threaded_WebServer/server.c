@@ -20,6 +20,8 @@
 #define INVALID -1
 #define BUFF_SIZE 1024
 #define STDOUT_FILENO 1
+#define INT_SIZE 8
+#define STD_BASE 10
 
 /*
   THE CODE STRUCTURE GIVEN BELOW IS JUST A SUGESSTION. FEEL FREE TO MODIFY AS NEEDED
@@ -284,7 +286,7 @@ void * dispatch(void *arg) {
 void * worker(void *arg) {
   printf("Worker thread number %d initialized\n", arg);
   int worker_id = arg;
-  int reqNum = 0; //The number of requests this worker has processed.
+  int requests_processed = 0; //The number of requests this worker has processed.
 
    while (1) {
      int time_of_request = 0; //Where the time measured will be stored.
@@ -318,21 +320,47 @@ void * worker(void *arg) {
         //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
         if((fd = open(search, O_RDWR)) ==-1){
           return_error(gfd, BUF);
-        }; //This is a non-blocking open call. We do this to make sure threads don't die.
-        if(read(fd, BUF, BUFF_SIZE) ==-1){
+        };
+        int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
+        if((bytes_read = read(fd, BUF, BUFF_SIZE)) ==-1){
           return_error(gfd, BUF);
         }; //Read the data stored at that location into the Buffer we provide.
         close(fd);
         printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd,content_type,BUF,BUFF_SIZE);
         if(return_result(gfd,content_type,BUF,BUFF_SIZE) != -1){
           printf("Successfully returned a result\n");
-        };
+        }
+        else{
+          printf("We did NOT return a result... \n");
+          //TODO: Figure out what to do if we get a bad request
+        }
         // Stop recording the time
         int end = getCurrentTimeInMills();
         time_of_request = end-start;
 
-        char str[BUFF_SIZE];
-        itoa(0,str,10);
+
+        //TODO: Block this off into a separate function, we need to abstract some of this worker thread
+        char str[BUFF_SIZE]; // This is where the full request will be placed.
+        char id[INT_SIZE]; //This is the worker id
+        itoa(worker_id, id, STD_BASE);
+        char reqNum[INT_SIZE]; //This is the number of requests processed by this worker so far
+        itoa(requests_processed, reqNum, STD_BASE);
+        char acfd[INT_SIZE]; //This is the fd given to us by accept_connection()
+        itoa(gfd, acfd, STD_BASE);
+        char request_string[BUFF_SIZE]; //This is the filename buffer filled in by the get request function
+        strcpy(request_string, cur_request.request);
+        char bytes_error[INT_SIZE];
+        itoa(bytes_read, bytes_error, STD_BASE);
+        char time[INT_SIZE]; //This is the time of the request
+        itoa(time_of_request, time, STD_BASE);
+        char hit_miss[INT_SIZE]; //This will be "HIT" on a cache hit and "MISS" on a cache miss
+        strcpy(hit_miss, "MISS");
+
+        //TODO: Protect these printf statements. They are for formatted output and need to be locked because of thread safety.
+        printf("[%s][%s][%s][%s][%s][%s][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
+
+
+
         // Log the request into the file and terminal
         write(STDOUT_FILENO, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
       }
