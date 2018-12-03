@@ -19,6 +19,7 @@
 #define MAX_CE 100
 #define INVALID -1
 #define BUFF_SIZE 1024
+#define STDOUT_FILENO 1
 
 /*
   THE CODE STRUCTURE GIVEN BELOW IS JUST A SUGESSTION. FEEL FREE TO MODIFY AS NEEDED
@@ -59,6 +60,62 @@ void slice_queue(request_t* src, request_t* dest, int start, int end)
   }
 }
 /**********************************************************************************/
+
+/** Integer to ASCII **/
+// inline function to swap two numbers
+void swap(char *x, char *y) {
+  char t = *x; *x = *y; *y = t;
+}
+
+// function to reverse buffer[i..j]
+char* reverse(char *buffer, int i, int j)
+{
+  while (i < j)
+    swap(&buffer[i++], &buffer[j--]);
+
+  return buffer;
+}
+
+// Iterative function to implement itoa() function in C
+char* itoa(int value, char* buffer, int base)
+{
+  // invalid input
+  if (base < 2 || base > 32)
+    return buffer;
+
+  // consider absolute value of number
+  int n = abs(value);
+
+  int i = 0;
+  while (n)
+  {
+    int r = n % base;
+
+    if (r >= 10)
+      buffer[i++] = 65 + (r - 10);
+    else
+      buffer[i++] = 48 + r;
+
+    n = n / base;
+  }
+
+  // if number is 0
+  if (i == 0)
+    buffer[i++] = '0';
+
+  // If base is 10 and value is negative, the resulting string
+  // is preceded with a minus sign (-)
+  // With any other base, value is always considered unsigned
+  if (value < 0 && base == 10)
+    buffer[i++] = '-';
+
+  buffer[i] = '\0'; // null terminate string
+
+  // reverse the string and return it
+  return reverse(buffer, 0, i - 1);
+}
+
+/** **/
 
 /* ************************************ Cache Code ********************************/
 
@@ -226,6 +283,9 @@ void * dispatch(void *arg) {
 // Function to retrieve the request from the queue, process it and then return a result to the client
 void * worker(void *arg) {
   printf("Worker thread number %d initialized\n", arg);
+  int worker_id = arg;
+  int reqNum = 0; //The number of requests this worker has processed.
+
    while (1) {
      int time_of_request = 0; //Where the time measured will be stored.
      // Start recording time
@@ -267,14 +327,16 @@ void * worker(void *arg) {
         if(return_result(gfd,content_type,BUF,BUFF_SIZE) != -1){
           printf("Successfully returned a result\n");
         };
+        // Stop recording the time
+        int end = getCurrentTimeInMills();
+        time_of_request = end-start;
+
+        char str[BUFF_SIZE];
+        itoa(0,str,10);
+        // Log the request into the file and terminal
+        write(STDOUT_FILENO, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
       }
     }
-
-    // Stop recording the time
-    int end = getCurrentTimeInMills();
-    time_of_request = end-start;
-
-    // Log the request into the file and terminal
 
 
     // return the result
