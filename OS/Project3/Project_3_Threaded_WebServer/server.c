@@ -65,6 +65,7 @@ void slice_queue(request_t* src, request_t* dest, int start, int end)
 //Cache must be a global variable so all threads can access it.
 
 cache_entry_t* CACHE; //Create a global array for cache
+int CACHE_LEN; //Create a global var for the length of the cache.
 
 // Function to check whether the given request is present in cache
 int getCacheIndex(char *request){
@@ -78,9 +79,10 @@ int getCacheIndex(char *request){
 }
 
 // Function to add the request and its file content into the cache
-void addIntoCache(char *mybuf, char *memory , int memory_size){
+void addIntoCache(char *request, char *memory , int memory_size){
   // It should add the request at an index according to the cache replacement policy
   // Make sure to allocate/free memeory when adding or replacing cache entries
+
 }
 
 // clear the memory allocated to the cache
@@ -106,7 +108,7 @@ int readFromDisk(/*necessary arguments*/) {
 
 /* ************************************ Queue Code ********************************/
 request_t* QUEUE; //Create a global queue accessible by all threads. THIS IS A POINTER. This is important to remember
-int QUEUE_LEN = 0; //Length of the queue. Init at zero, change to however many queue requests we have.
+int QUEUE_LEN = 0; //Length of the queue. Init at 0, change to however many queue requests we have.
 
 // Function to add the request and its file content into the queue
 void addIntoQueue(int fd, void* request){
@@ -115,22 +117,22 @@ void addIntoQueue(int fd, void* request){
   new_request.request = request;
   new_request.fd = fd;
   request_t* tmpQ = (request_t*) malloc((QUEUE_LEN+1)* sizeof(request_t)); //Create a temporary queue
-  tmpQ[QUEUE_LEN+1] =  new_request; //Add the request at the end of the q
+  tmpQ[QUEUE_LEN] =  new_request; //Add the request at the end of the q
 //  tmpQ = QUEUE; //Put the current Queue in the place pointed to by tmp
 //  free(QUEUE); //Remove the data that was in queue
   QUEUE = tmpQ; //Assign new queue to q.
-  printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN+1].request);
+  printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN].request);
   QUEUE_LEN +=1; //increment the length. The highest index will be QUEUE_LEN-1.
 //  printf("Got this far in addIntoQueue\n");
 //  free(tmpQ); //Free the memory at the place of tmpQ
-  printf("Successfully added to the queue! Queue is now size %d\n", sizeof(tmpQ));
+  printf("Successfully added to the queue! Queue is now size %d\n", QUEUE_LEN);
 }
 
 //Function to remove the first request in the queue, and decrement the queue length by one. Returns -1 if no queue
 //entries, and zero if there are.
 request_t removeRequestFromQueue(){
   if(QUEUE_LEN > 0){
-    request_t this_request = QUEUE[QUEUE_LEN];
+    request_t this_request = QUEUE[QUEUE_LEN-1]; //The last index will always be the length of the queue minus one.
 //    printf("%s\n", (char*)QUEUE[QUEUE_LEN].request);
     request_t* tmpQ = (request_t*) malloc((QUEUE_LEN-1)* sizeof(request_t)); //Create a temporary queue that is one smaller
     //TODO: Assign the data already in QUEUE from 1->QUEUE_LEN and assign to the tmp var.
@@ -203,18 +205,17 @@ void * dispatch(void *arg) {
     printf("Entered the while statement\n ");
     // Accept client connection
     char filename[BUFF_SIZE]; //Holds the filename
+    //TODO: Determine if a global access to this return resutl is appropriate. More than likely is not so we need ITC
     gfd = accept_connection(); //Gets the file descriptor. This is a blocking call until we receive a connection
     printf("I found an fd of %d\n", gfd);
-    if(gfd > 0) {
+    if(gfd > 0) { //if we actually secure a connection
 
       // Get request from the client
       if(get_request(gfd, filename) != 0){
         printf("Bad Request in Dispatch"); //TODO: Make sure this actually handles the error.
       }
-
       // Add the request into the queue
       addIntoQueue(gfd, filename);
-
     }
    }
    return NULL;
@@ -248,39 +249,33 @@ void * worker(void *arg) {
       }
       else{
         printf("Have to search the disk for file %s.\n", cur_request.request);
-        /**This merely shows our working directory**/
-//        char dir[BUFF_SIZE];
-//        getcwd(dir, BUFF_SIZE);
-//        printf("%s\n", dir);
         char search[BUFF_SIZE];
         strcat(search, "./testing");
         strcat(search, cur_request.request);
         printf("Have built the search string %s\n", search);
         int fd =-1; //The fd of the file we are pulling from the disk. -1 would indicate an error.
-        //TODO: Determine what kind of buffer to make, I simply made the first thing that open was writing to.
         char BUF[BUFF_SIZE]; // This is where we are storing the file. Will send this pointer to the cache.
         //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
-        fd = open(search, O_RDWR); //This is a non-blocking open call. We do this to make sure threads don't die.
-        read(fd, BUF, BUFF_SIZE); //Read the data stored at that location into the Buffer we provide.
+        if((fd = open(search, O_RDWR)) ==-1){
+          return_error(gfd, BUF);
+        }; //This is a non-blocking open call. We do this to make sure threads don't die.
+        if(read(fd, BUF, BUFF_SIZE) ==-1){
+          return_error(gfd, BUF);
+        }; //Read the data stored at that location into the Buffer we provide.
         close(fd);
         printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd,content_type,BUF,BUFF_SIZE);
-        if(return_result(gfd,content_type,BUF,BUFF_SIZE) == 0){
+        if(return_result(gfd,content_type,BUF,BUFF_SIZE) != -1){
           printf("Successfully returned a result\n");
         };
       }
     }
-
-
-
-    //These lines are just to show the working directory in this thread
-
-
 
     // Stop recording the time
     int end = getCurrentTimeInMills();
     time_of_request = end-start;
 
     // Log the request into the file and terminal
+
 
     // return the result
   }
