@@ -124,8 +124,16 @@ char* itoa(int value, char* buffer, int base)
 //Cache must be a global variable so all threads can access it.
 
 cache_entry_t* CACHE; //Create a global array for cache
-int CACHE_LEN =0; //Create a global var for the length of the cache. Should start at length zero. Newest entry at
+int CACHE_LEN = 0; //Create a global var for the length of the cache. Should start at length zero. Newest entry at
 //CACHE_LEN -1
+
+
+//Function to spit out the contents of the cache on demand
+void printCache(){
+	for(int i = 0; i < CACHE_LEN; i++){
+		printf("Cache Entry %d: %s\n",i, CACHE[i].request);
+	}
+}
 
 // Function to check whether the given request is present in cache
 int getCacheIndex(char *request){
@@ -134,6 +142,7 @@ int getCacheIndex(char *request){
   	printf("IN THE CACHE CURRENTLY IS %s\n", CACHE[i].request);
   	printf("ASKING FOR %s\n", request);
   	printf("GETTING BACK %d\n", strcmp(CACHE[i].request, request));
+  	printf("CACHE IS %d ENTRIES\n", CACHE_LEN);
     if(strcmp(CACHE[i].request, request) == 0){
       return i;
     }
@@ -145,18 +154,36 @@ int getCacheIndex(char *request){
 void addIntoCache(char *request, char *memory , int memory_size){
   // It should add the request at an index according to the cache replacement policy
   // Make sure to allocate/free memeory when adding or replacing cache entries
-  cache_entry_t new_entry; //The new cache entry received
-  cache_entry_t* new_cache = malloc((CACHE_LEN+1) * sizeof(cache_entry_t)); //The location of the new cache.
-  new_entry.request = request;
-  new_entry.content = memory;
-  new_entry.len = memory_size;
-  new_cache = CACHE; //Store what was previously in the cache.
-  new_cache[CACHE_LEN] = new_entry;
-  CACHE_LEN+=1;
-  CACHE = new_cache;
-  for(int i = 0; i < CACHE_LEN; i++){
-    printf("Cache Entry %d: %s\n",i, CACHE[i].request);
+  printf("Entered the addIntoCache function\n");
+  cache_entry_t new_entry;
+  cache_entry_t* new_cache;
+  if((new_cache = malloc((CACHE_LEN+1) * sizeof(cache_entry_t))) == NULL){
+  	perror("Did not malloc");
   }
+  else{
+  	printf("I malloced\n");
+  } //The location of the new cache.
+  char request_buf[BUFF_SIZE];
+  strcpy(request_buf, request);
+  new_entry.request = strdup(request);
+//  printf("The new entry has a request of %s\n", new_entry.request);
+  char content_buf[BUFF_SIZE];
+  strcpy(content_buf, memory);
+  new_entry.content= strdup(memory);
+  new_entry.len =  memory;
+  for(int i = 0; i<CACHE_LEN; i++){
+  	printf("The old request in the ith position was %s\n", CACHE[i].request);
+  	new_cache[i] = CACHE[i]; //Copy over what we had before
+  }
+  new_cache[CACHE_LEN] = new_entry; //Add the new entry at the end of the cache
+  CACHE_LEN+=1; //Indicate that we have added a new struct at the end of the array.
+  CACHE = new_cache; //new_cache now has the data we desire.
+  for(int i =0; i<CACHE_LEN; i++){
+  	printf("The new cache has at the %d position: %s\n", i, CACHE[i].request);
+  }
+  printf("\n");
+  printCache();
+
 }
 
 // clear the memory allocated to the cache
@@ -170,7 +197,7 @@ void deleteCache(){
 // Function to initialize the cache
 void initCache(){
   // Allocating memory and initializing the cache array
-  CACHE =  malloc(MAX_CE * sizeof(struct cache_entry)); //We are setting the array to point the
+  CACHE =  malloc(MAX_CE * sizeof(cache_entry_t)); //We are setting the array to point the
   //Cache at the block of memory we asked for.
   printf("Successfully initialized cache\n");
 }
@@ -195,13 +222,9 @@ void addIntoQueue(int fd, void* request){
   new_request.fd = fd;
   request_t* tmpQ = (request_t*) malloc((QUEUE_LEN+1)* sizeof(request_t)); //Create a temporary queue
   tmpQ[QUEUE_LEN] =  new_request; //Add the request at the end of the q
-//  tmpQ = QUEUE; //Put the current Queue in the place pointed to by tmp
-//  free(QUEUE); //Remove the data that was in queue
   QUEUE = tmpQ; //Assign new queue to q.
   printf("The oldest request is: %s\n",(char*)QUEUE[QUEUE_LEN].request);
   QUEUE_LEN +=1; //increment the length. The highest index will be QUEUE_LEN-1.
-//  printf("Got this far in addIntoQueue\n");
-//  free(tmpQ); //Free the memory at the place of tmpQ
   printf("Successfully added to the queue! Queue is now size %d\n", QUEUE_LEN);
   for(int i = 0; i < QUEUE_LEN; i++){
     printf("QUEUE Entry %d: %s\n",i, QUEUE[i].request);
@@ -251,6 +274,7 @@ char* getContentType(char * mybuf) {
   printf("%d\n",dot_pos);
   printf("%s\n", &mybuf[dot_pos]);
   char content_type[16]; //TODO: Change this to a sensical value.
+  strcpy(content_type, "\0"); //Clear the content_type buffer
   strcpy(content_type, &mybuf[dot_pos]); //https://stackoverflow.com/questions/12504657/copy-end-of-string-in-c
   printf("GOT CONTENT TYPE: %s\n", content_type);
   if(strcmp(content_type, ".html") == 0){
@@ -261,6 +285,10 @@ char* getContentType(char * mybuf) {
   }
   else if(strcmp(content_type, ".gif") == 0){
     return "image/gif";
+  }
+  else if(strcmp(content_type, ".cache") == 0){
+  	printCache();
+  	return "C";
   }
   else{
     return "text/plain";
@@ -282,7 +310,6 @@ int getCurrentTimeInMills() {
 void * dispatch(void *arg) {
   printf("Dispatcher thread number %d created\n", arg);
   while (1) {
-    printf("Entered the while statement\n ");
     // Accept client connection
     char filename[BUFF_SIZE]; //Holds the filename
     //TODO: Determine if a global access to this return resutl is appropriate. More than likely is not so we need ITC
@@ -344,58 +371,73 @@ void * worker(void *arg) {
     // Get the request from the queue
     request_t cur_request;
     if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
-      int start = getCurrentTimeInMills(); // Get a starting timestamp
-      cur_request = removeRequestFromQueue();
-      printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
-      char content_type[128]; //TODO: Assign a size to buffers handling content size
-      strcpy(content_type, getContentType(cur_request.request));
-      printf("This request has a content type of %s\n", getContentType(cur_request.request)); // Show us the c-type
+	    int start = getCurrentTimeInMills(); // Get a starting timestamp
+	    printCache();
+	    printf("\n");
+	    printf("START OF REQUEST\n");
+	    printf("\n");
+	    cur_request = removeRequestFromQueue();
+	    printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
+	    char content_type[128]; //TODO: Assign a size to buffers handling content size
+	    strcpy(content_type, getContentType(cur_request.request));
+	    if (strcmp(content_type, "C") != 0) { //If not asking to print out the cache.
+            printf("This request has a content type of %s\n", content_type); // Show us the c-type
 
-      /** Not originally like this, but it keeps from having unnecessary prints and searches. **/
-      // Get the data from the disk or the cache
-      int cache_index = -1;
-      if((cache_index = getCacheIndex(cur_request.request)) >= 0 ){
-        printf("Found the request in the cache at position %d\n", cache_index);
-      }
-      else{
-        printf("Have to search the disk for file %s.\n", cur_request.request);
+		    /** Not originally like this, but it keeps from having unnecessary prints and searches. **/
+		    // Get the data from the disk or the cache
+		    int cache_index = -1;
+		    if ((cache_index = getCacheIndex(cur_request.request)) >= 0) {
+			    printf("Found the request in the cache at position %d\n", cache_index);
+			    return_result(gfd, content_type, CACHE[cache_index].content, CACHE[cache_index].len);
+			    int end = getCurrentTimeInMills();
+			    time_of_request = end - start;
+			    worker_log_results(worker_id, requests_processed, gfd, CACHE[cache_index].request,
+			                       CACHE[cache_index].len, time_of_request, "HIT");
+			    requests_processed += 1;
+		    } else {
+			    printf("Have to search the disk for file %s.\n", cur_request.request);
 
-        /**MAYBE put this green wrapped code in a function by itself. **/
-        char search[BUFF_SIZE];
-        strcpy(search, "\0"); //Clear the string to start.
-        strcat(search, "./testing");
-        strcat(search, cur_request.request);
-        printf("Have built the search string %s\n", search);
-        int fd =-1; //The fd of the file we are pulling from the disk. -1 would indicate an error.
-        char BUF[BUFF_SIZE]; // This is where we are storing the file. Will send this pointer to the cache.
-        //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
-        if((fd = open(search, O_RDWR)) ==-1){
-          return_error(gfd, BUF);
-        };
-        int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
-        if((bytes_read = read(fd, BUF, BUFF_SIZE)) ==-1){
-          return_error(gfd, BUF);
-        }; //Read the data stored at that location into the Buffer we provide.
-        close(fd);
-        /** Code that could be in on **/
+			    /**MAYBE put this green wrapped code in a function by itself. **/
+			    char search[BUFF_SIZE];
+			    strcpy(search, "\0"); //Clear the string to start.
+			    strcat(search, "./testing");
+			    strcat(search, cur_request.request);
+			    printf("Have built the search string %s\n", search);
+			    int fd = -1; //The fd of the file we are pulling from the disk. -1 would indicate an error.
+			    char BUF[BUFF_SIZE]; // This is where we are storing the file. Will send this pointer to the cache.
+			    //TODO: On this open call, we want to make sure we return some form of error if we don't find a file.
+			    if ((fd = open(search, O_RDWR)) == -1) {
+				    return_error(gfd, BUF);
+			    };
+			    int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
+			    if ((bytes_read = read(fd, BUF, BUFF_SIZE)) == -1) {
+				    return_error(gfd, BUF);
+			    }; //Read the data stored at that location into the Buffer we provide.
+			    close(fd);
+			    /** Code that could be in on **/
 
-        printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd,content_type,BUF,BUFF_SIZE);
-        if(return_result(gfd,content_type,BUF,BUFF_SIZE) != -1){
-          printf("Successfully returned a result\n");
-        }
-        else{
-          printf("We did NOT return a result... \n");
-          //TODO: Figure out what to do if we get a bad request
-        }
-        // Stop recording the time
-        int end = getCurrentTimeInMills();
-        time_of_request = end-start;
+			    printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd, content_type,
+			           BUF, BUFF_SIZE);
+			    if (return_result(gfd, content_type, BUF, BUFF_SIZE) != -1) {
+				    printf("Successfully returned a result\n");
+			    } else {
+				    printf("We did NOT return a result... \n");
+				    //TODO: Figure out what to do if we get a bad request
+			    }
+			    // Stop recording the time
+			    int end = getCurrentTimeInMills();
+			    time_of_request = end - start;
 
-        // Log the request into the file and terminal
-        worker_log_results(worker_id, requests_processed,gfd,cur_request.request,bytes_read,time_of_request,"MISS");
-        //Cache the results
-        addIntoCache(cur_request.request, BUF, BUFF_SIZE);
-      }
+			    // Log the request into the file and terminal
+			    worker_log_results(worker_id, requests_processed, gfd, cur_request.request, bytes_read, time_of_request,
+			                       "MISS");
+			    //Cache the results
+			    char REQUEST[BUFF_SIZE];
+			    strcpy(REQUEST, (char*)cur_request.request);
+			    addIntoCache(REQUEST, BUF, BUFF_SIZE);
+			    requests_processed += 1;
+		    }
+	    }
     }
 
 
