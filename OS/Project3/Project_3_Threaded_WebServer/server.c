@@ -124,7 +124,8 @@ char* itoa(int value, char* buffer, int base)
 //Cache must be a global variable so all threads can access it.
 
 cache_entry_t* CACHE; //Create a global array for cache
-int CACHE_LEN; //Create a global var for the length of the cache.
+int CACHE_LEN =0; //Create a global var for the length of the cache. Should start at length zero. Newest entry at
+//CACHE_LEN -1
 
 // Function to check whether the given request is present in cache
 int getCacheIndex(char *request){
@@ -141,12 +142,25 @@ int getCacheIndex(char *request){
 void addIntoCache(char *request, char *memory , int memory_size){
   // It should add the request at an index according to the cache replacement policy
   // Make sure to allocate/free memeory when adding or replacing cache entries
-
+  cache_entry_t new_entry; //The new cache entry received
+  cache_entry_t* new_cache = malloc((CACHE_LEN+1) * sizeof(cache_entry_t)); //The location of the new cache.
+  new_entry.request = request;
+  new_entry.content = memory;
+  new_entry.len = memory_size;
+  new_cache = CACHE;
+  new_cache[CACHE_LEN] = new_entry;
+  for(int i = 0; i < CACHE_LEN; i++){
+    printf("Cache Entry %d: %s\n",i, CACHE[i].request);
+  }
+  CACHE_LEN+=1;
 }
 
 // clear the memory allocated to the cache
 void deleteCache(){
   // De-allocate/free the cache memory
+  CACHE_LEN = 0;
+  cache_entry_t* new_cache = malloc(0);
+  CACHE = new_cache;
 }
 
 // Function to initialize the cache
@@ -185,6 +199,9 @@ void addIntoQueue(int fd, void* request){
 //  printf("Got this far in addIntoQueue\n");
 //  free(tmpQ); //Free the memory at the place of tmpQ
   printf("Successfully added to the queue! Queue is now size %d\n", QUEUE_LEN);
+  for(int i = 0; i < QUEUE_LEN; i++){
+    printf("QUEUE Entry %d: %s\n",i, QUEUE[i].request);
+  }
 }
 
 //Function to remove the first request in the queue, and decrement the queue length by one. Returns -1 if no queue
@@ -281,7 +298,7 @@ void * dispatch(void *arg) {
 }
 
 /**********************************************************************************/
-//Function to log the results of a particular worker
+//Function to log the results of a particular worker. TODO: Add error checking to this function, and return -1 on fail
 void worker_log_results(int worker_id, int requests_processed, int fd, char* request_string,
                         int bytes_read, int time_of_request, char* hit_miss)
 {
@@ -299,10 +316,12 @@ void worker_log_results(int worker_id, int requests_processed, int fd, char* req
   //TODO: Protect these printf statements. They are for formatted output and need to be locked because of thread safety.
   printf("[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
   sprintf(str, "[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
-  int log_fd = open("./web_server_log", O_WRONLY);
+  int log_fd = open("./web_server_log", O_WRONLY|O_APPEND);
   write(log_fd, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
+  close(log_fd);
 }
 
+//This is the function used for the worker thread to search the disk.
 void worker_search_disk(){
 
 }
@@ -328,17 +347,18 @@ void * worker(void *arg) {
       strcpy(content_type, getContentType(cur_request.request));
       printf("This request has a content type of %s\n", getContentType(cur_request.request)); // Show us the c-type
 
-
       /** Not originally like this, but it keeps from having unnecessary prints and searches. **/
       // Get the data from the disk or the cache
-      if(getCacheIndex(cur_request.request) != -1){
-        printf("Found the request in the cache\n");
+      int cache_index = -1;
+      if((cache_index = getCacheIndex(cur_request.request)) >0 ){
+        printf("Found the request in the cache at position %d\n", cache_index);
       }
       else{
         printf("Have to search the disk for file %s.\n", cur_request.request);
 
         /**MAYBE put this green wrapped code in a function by itself. **/
         char search[BUFF_SIZE];
+        strcpy(search, "\0"); //Clear the string to start.
         strcat(search, "./testing");
         strcat(search, cur_request.request);
         printf("Have built the search string %s\n", search);
@@ -369,6 +389,8 @@ void * worker(void *arg) {
 
         // Log the request into the file and terminal
         worker_log_results(worker_id, requests_processed,gfd,cur_request.request,bytes_read,time_of_request,"MISS");
+        //Cache the results
+        addIntoCache(cur_request.request, BUF, BUFF_SIZE);
       }
     }
 
