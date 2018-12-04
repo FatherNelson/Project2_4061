@@ -130,8 +130,11 @@ int CACHE_LEN =0; //Create a global var for the length of the cache. Should star
 // Function to check whether the given request is present in cache
 int getCacheIndex(char *request){
   /// return the index if the request is present in the cache, return -1 if not in cache
-  for(int i = 0; i < MAX_cache_len; i++){
-    if(CACHE[i].request == request){
+  for(int i = 0; i < CACHE_LEN; i++){
+  	printf("IN THE CACHE CURRENTLY IS %s\n", CACHE[i].request);
+  	printf("ASKING FOR %s\n", request);
+  	printf("GETTING BACK %d\n", strcmp(CACHE[i].request, request));
+    if(strcmp(CACHE[i].request, request) == 0){
       return i;
     }
   }
@@ -147,12 +150,13 @@ void addIntoCache(char *request, char *memory , int memory_size){
   new_entry.request = request;
   new_entry.content = memory;
   new_entry.len = memory_size;
-  new_cache = CACHE;
+  new_cache = CACHE; //Store what was previously in the cache.
   new_cache[CACHE_LEN] = new_entry;
+  CACHE_LEN+=1;
+  CACHE = new_cache;
   for(int i = 0; i < CACHE_LEN; i++){
     printf("Cache Entry %d: %s\n",i, CACHE[i].request);
   }
-  CACHE_LEN+=1;
 }
 
 // clear the memory allocated to the cache
@@ -350,7 +354,7 @@ void * worker(void *arg) {
       /** Not originally like this, but it keeps from having unnecessary prints and searches. **/
       // Get the data from the disk or the cache
       int cache_index = -1;
-      if((cache_index = getCacheIndex(cur_request.request)) >0 ){
+      if((cache_index = getCacheIndex(cur_request.request)) >= 0 ){
         printf("Found the request in the cache at position %d\n", cache_index);
       }
       else{
