@@ -281,6 +281,31 @@ void * dispatch(void *arg) {
 }
 
 /**********************************************************************************/
+//Function to log the results of a particular worker
+void worker_log_results(int worker_id, int requests_processed, int fd, char* request_string,
+                        int bytes_read, int time_of_request, char* hit_miss)
+{
+  char str[BUFF_SIZE]; // This is where the full request will be placed.
+  char id[INT_SIZE]; //This is the worker id
+  itoa(worker_id, id, STD_BASE);
+  char reqNum[INT_SIZE]; //This is the number of requests processed by this worker so far
+  itoa(requests_processed, reqNum, STD_BASE);
+  char acfd[INT_SIZE]; //This is the fd given to us by accept_connection()
+  itoa(gfd, acfd, STD_BASE);
+  char bytes_error[INT_SIZE];
+  itoa(bytes_read, bytes_error, STD_BASE);
+  char time[INT_SIZE]; //This is the time of the request
+  itoa(time_of_request, time, STD_BASE);
+  //TODO: Protect these printf statements. They are for formatted output and need to be locked because of thread safety.
+  printf("[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
+  sprintf(str, "[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
+  int log_fd = open("./web_server_log", O_WRONLY);
+  write(log_fd, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
+}
+
+void worker_search_disk(){
+
+}
 
 // Function to retrieve the request from the queue, process it and then return a result to the client
 void * worker(void *arg) {
@@ -291,12 +316,12 @@ void * worker(void *arg) {
    while (1) {
      int time_of_request = 0; //Where the time measured will be stored.
      // Start recording time
-     int start = getCurrentTimeInMills(); // Get a starting timestamp
 
 
     // Get the request from the queue
     request_t cur_request;
     if(QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
+      int start = getCurrentTimeInMills(); // Get a starting timestamp
       cur_request = removeRequestFromQueue();
       printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
       char content_type[128]; //TODO: Assign a size to buffers handling content size
@@ -311,6 +336,8 @@ void * worker(void *arg) {
       }
       else{
         printf("Have to search the disk for file %s.\n", cur_request.request);
+
+        /**MAYBE put this green wrapped code in a function by itself. **/
         char search[BUFF_SIZE];
         strcat(search, "./testing");
         strcat(search, cur_request.request);
@@ -326,6 +353,8 @@ void * worker(void *arg) {
           return_error(gfd, BUF);
         }; //Read the data stored at that location into the Buffer we provide.
         close(fd);
+        /** Code that could be in on **/
+
         printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; BUFF_SIZE: %d\n", fd,content_type,BUF,BUFF_SIZE);
         if(return_result(gfd,content_type,BUF,BUFF_SIZE) != -1){
           printf("Successfully returned a result\n");
@@ -338,31 +367,8 @@ void * worker(void *arg) {
         int end = getCurrentTimeInMills();
         time_of_request = end-start;
 
-
-        //TODO: Block this off into a separate function, we need to abstract some of this worker thread
-        char str[BUFF_SIZE]; // This is where the full request will be placed.
-        char id[INT_SIZE]; //This is the worker id
-        itoa(worker_id, id, STD_BASE);
-        char reqNum[INT_SIZE]; //This is the number of requests processed by this worker so far
-        itoa(requests_processed, reqNum, STD_BASE);
-        char acfd[INT_SIZE]; //This is the fd given to us by accept_connection()
-        itoa(gfd, acfd, STD_BASE);
-        char request_string[BUFF_SIZE]; //This is the filename buffer filled in by the get request function
-        strcpy(request_string, cur_request.request);
-        char bytes_error[INT_SIZE];
-        itoa(bytes_read, bytes_error, STD_BASE);
-        char time[INT_SIZE]; //This is the time of the request
-        itoa(time_of_request, time, STD_BASE);
-        char hit_miss[INT_SIZE]; //This will be "HIT" on a cache hit and "MISS" on a cache miss
-        strcpy(hit_miss, "MISS");
-
-        //TODO: Protect these printf statements. They are for formatted output and need to be locked because of thread safety.
-        printf("[%s][%s][%s][%s][%s][%s][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
-
-
-
         // Log the request into the file and terminal
-        write(STDOUT_FILENO, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
+        worker_log_results(worker_id, requests_processed,gfd,cur_request.request,bytes_read,time_of_request,"MISS");
       }
     }
 
@@ -371,7 +377,6 @@ void * worker(void *arg) {
   }
   return NULL;
 }
-
 /**********************************************************************************/
 
 void display_help(){
