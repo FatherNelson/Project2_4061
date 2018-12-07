@@ -43,6 +43,17 @@ typedef struct cache_entry {
 
 /**GLOBAL VARIABLES**/
 int gfd; // Descriptor for further request processing
+pthread_mutex_t dispatch_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t dispatch_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t worker_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t worker_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t gfd_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t gfd_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cache_cond = PTHREAD_COND_INITIALIZER;
+
 /* ************************ Dynamic Pool Code ***********************************/
 // Extra Credit: This function implements the policy to change the worker thread pool dynamically
 // depending on the number of requests
@@ -66,53 +77,52 @@ void slice_queue(request_t * src, request_t * dest, int start, int end) {
 
 /** Integer to ASCII **/
 // inline function to swap two numbers
-void swap(char * x, char * y) {
-	char t = * x;* x = * y;* y = t;
+void swap(char * first_number, char * second_number) {
+	char t = * first_number;* first_number = * second_number;* second_number = t;
 }
 
 // function to reverse buffer[i..j]
-char * reverse(char * buffer, int i, int j) {
+char * reverse(char * buf, int i, int j) {
 	while (i < j)
-		swap( & buffer[i++], & buffer[j--]);
-
-	return buffer;
+		swap( & buf[i++], & buf[j--]);
+	return buf;
 }
 
 // Iterative function to implement itoa() function in C
-char * itoa(int value, char * buffer, int base) {
+char * itoa(int number, char * buf, int base) {
 	// invalid input
 	if (base < 2 || base > 32)
-		return buffer;
+		return buf;
 
 	// consider absolute value of number
-	int n = abs(value);
+	int n = abs(number);
 
 	int i = 0;
 	while (n) {
 		int r = n % base;
 
 		if (r >= 10)
-			buffer[i++] = 65 + (r - 10);
+			buf[i++] = 65 + (r - 10);
 		else
-			buffer[i++] = 48 + r;
+			buf[i++] = 48 + r;
 
 		n = n / base;
 	}
 
 	// if number is 0
 	if (i == 0)
-		buffer[i++] = '0';
+		buf[i++] = '0';
 
 	// If base is 10 and value is negative, the resulting string
 	// is preceded with a minus sign (-)
 	// With any other base, value is always considered unsigned
-	if (value < 0 && base == 10)
-		buffer[i++] = '-';
+	if (number < 0 && base == 10)
+		buf[i++] = '-';
 
-	buffer[i] = '\0'; // null terminate string
+	buf[i] = '\0'; // null terminate string
 
 	// reverse the string and return it
-	return reverse(buffer, 0, i - 1);
+	return reverse(buf, 0, i - 1);
 }
 
 /** **/
@@ -166,7 +176,7 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 	char content_buf[BUFF_SIZE];
 	strcpy(content_buf, memory);
 	new_entry.content = strdup(memory);
-	new_entry.len = memory;
+	new_entry.len = memory_size;
 	for (int i = 0; i < CACHE_LEN; i++) {
 		printf("The old request in the ith position was %s\n", CACHE[i].request);
 		new_cache[i] = CACHE[i]; //Copy over what we had before
@@ -198,11 +208,7 @@ void initCache() {
 	printf("Successfully initialized cache\n");
 }
 
-// Function to open and read the file from the disk into the memory
-// Add necessary arguments as needed
-int readFromDisk( /*necessary arguments*/ ) {
-	// Open and read the contents of file given the request
-}
+
 
 /**********************************************************************************/
 
@@ -241,6 +247,8 @@ request_t removeRequestFromQueue() {
 		return this_request; //Added back the one to accomodate for the fact that we already changed the value of QUEUE_LEN
 	}
 	//TODO: Figure out what to do if the queue is empty, may be okay to just sit and churn, idk
+	request_t *dud = (request_t*)malloc(sizeof(request_t));
+	return *dud;
 }
 
 // clear the memory allocated to the queue
@@ -299,11 +307,12 @@ int getCurrentTimeInMills() {
 
 // Function to receive the request from the client and add to the queue
 void * dispatch(void * arg) {
-	printf("Dispatcher thread number %d created\n", arg);
+	printf("Dispatcher thread number %d created\n", (int)arg);
 	while (1) {
 		// Accept client connection
 		char filename[BUFF_SIZE]; //Holds the filename
-		//TODO: Determine if a global access to this return resutl is appropriate. More than likely is not so we need ITC
+		pthread_mutex_lock(&gfd_mutex); //Acquire the mutex
+		//TODO: Determine if a global access to this return result is appropriate. More than likely is not so we need ITC
 		gfd = accept_connection(); //Gets the file descriptor. This is a blocking call until we receive a connection
 		printf("I found an fd of %d\n", gfd);
 		if (gfd > 0) { //if we actually secure a connection
@@ -314,7 +323,10 @@ void * dispatch(void * arg) {
 			}
 			// Add the request into the queue
 			addIntoQueue(gfd, filename);
+			pthread_cond_broadcast(&worker_cond);
 		}
+		pthread_cond_broadcast(&gfd_cond);
+		pthread_mutex_unlock(&gfd_mutex);
 	}
 	return NULL;
 }
@@ -342,8 +354,9 @@ void worker_log_results(int worker_id, int requests_processed, int fd, char * re
 	close(log_fd);
 }
 
-//This is the function used for the worker thread to search the disk. Returns the bytes read on success, -1 on failure
-int worker_search_disk(request_t cur_request, char * content_type) {
+// Function to open and read the file from the disk into the memory
+// Add necessary arguments as needed
+int readFromDisk(request_t cur_request, char * content_type) {
 	printf("Have to search the disk for file %s.\n", cur_request.request);
 	/**MAYBE put this green wrapped code in a function by itself. **/
 	char search[BUFF_SIZE];
@@ -372,13 +385,14 @@ int worker_search_disk(request_t cur_request, char * content_type) {
 	} else {
 		printf("We did NOT return a result... \n");
 		//TODO: Figure out what to do if we get a bad request
+		return -1;
 	}
 }
 
 // Function to retrieve the request from the queue, process it and then return a result to the client
 void * worker(void * arg) {
-	printf("Worker thread number %d initialized\n", arg);
-	int worker_id = arg;
+	printf("Worker thread number %d initialized\n", (int)arg);
+	int worker_id = (int)arg;
 	int requests_processed = 0; //The number of requests this worker has processed.
 
 	while (1) {
@@ -387,6 +401,8 @@ void * worker(void * arg) {
 
 		// Get the request from the queue
 		request_t cur_request;
+		pthread_mutex_lock(&worker_mutex);
+		pthread_cond_wait(&worker_cond, &worker_mutex);
 		if (QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
 			int start = getCurrentTimeInMills(); // Get a starting timestamp
 			printCache();
@@ -412,7 +428,7 @@ void * worker(void * arg) {
 					                   CACHE[cache_index].len, time_of_request, "HIT");
 					requests_processed += 1;
 				} else {
-					int bytes_read = worker_search_disk(cur_request, content_type);
+					int bytes_read = readFromDisk(cur_request, content_type);
 					// Stop recording the time
 					int end = getCurrentTimeInMills();
 					time_of_request = end - start;
@@ -428,6 +444,11 @@ void * worker(void * arg) {
 				}
 			}
 		}
+		else{
+			pthread_cond_wait(&worker_mutex, &worker_cond);
+		}
+		pthread_cond_broadcast(&worker_cond);
+		pthread_mutex_unlock(&worker_mutex);
 
 		// return the result
 	}
@@ -466,7 +487,7 @@ int main(int argc, char ** argv) {
 	// Get the input args
 	int port = atoi(argv[1]); //The port number
 	char * path[BUFF_SIZE];
-	strcpy(path, argv); // The path to the web root location from where the files will be served
+	strcpy(path, *argv); // The path to the web root location from where the files will be served
 	int num_dispatcher = atoi(argv[3]); // How many dispatcher threads to start up
 	int num_workers = atoi(argv[4]); // How many worker threads to start up
 	int dynamic_flag = atoi(argv[5]); // Indicates whether to make the thread pool size static or dynamic
@@ -521,10 +542,12 @@ int main(int argc, char ** argv) {
 	pthread_t dispatchers;
 	int dispatch_count = 0;
 	for (dispatch_count = 0; dispatch_count < num_dispatcher; dispatch_count++) {
-		pthread_create( & dispatchers, NULL, dispatch, dispatch_count);
+		pthread_create( &dispatchers, NULL, dispatch, dispatch_count);
 	}
-	pthread_join( & dispatchers[0], NULL); //TODO: Figure out if this joining strategy is the best way to do this or not.
-
+	for(int i = 0; i < num_dispatcher;i++) {
+		pthread_join(&dispatchers[i],
+		             NULL); //TODO: Figure out if this joining strategy is the best way to do this or not.
+	}
 	// Clean up
 	deleteCache();
 	deleteQueue();

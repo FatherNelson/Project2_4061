@@ -1,0 +1,36 @@
+Virtual Memory:
+	Positives:
+		Physical = Virtual + Start memory location
+		Simple
+		Easy to Access: Can relocate if needed
+
+	Negatives:
+		Fragmentation: Gaps in memory. Disk gets "holes"  in it (Unusable small slices of memory)
+			- Esspecially a problem when a process G can fit, but is disallowed.
+		Overhead: Must bookkeep memory holes. Find a hole just big enough to hold f
+			-Searching through holes is expensive time wise
+			-Will have to keep bookkeeping the memory.
+Paging:
+		1. Allow memory to be non-contiguous.
+		2. Memory is allocated in fix-sized units.
+		3. Better than virtual memory.
+	How do?
+		Divide VAS into "pages"
+			-They will be of fixed size, (4k,8k, whatever. Just some number of bytes)
+		If we can get free memory in a page, we grab it.
+			Placed a logical axis on top of the memory.
+	What have we gained from paging memory:
+		Positives:
+			Less external fragmentation - Less wasted space in the disk. No "islands of memory".
+		Negatives:
+			More internal fragmentation - It is not awful.
+			Addr translation is a little slower.
+		Takeaway:
+			The savings of external fragmentation far outweigh any issues we have with internal fragmenation.
+			External fragmentation can make us lose 50% of our usable memory space.
+Address Translation:
+	Page table:
+		1. Every process has a page table.
+			- For each frame, what page is it stored at?
+		2. Given Va, what is the ps?
+			- P = [Va/PS]floor 
