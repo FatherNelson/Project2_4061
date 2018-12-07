@@ -23,6 +23,11 @@
 #define INT_SIZE 8
 #define STD_BASE 10
 
+//TODO: 1) Fix the mismanagement of queue or whatever is causing the crash in a multithreaded environment.
+//TODO: 2) Dynamically Allocate Buffers
+//TODO: 3) Perform Analytics
+//TODO: 4) Finish the Extra Credit
+
 /*
   THE CODE STRUCTURE GIVEN BELOW IS JUST A SUGESSTION. FEEL FREE TO MODIFY AS NEEDED
 */
@@ -228,18 +233,18 @@ void add_into_queue(int fd, void * request) {
 //	request_t * tmpQ = (request_t * ) malloc((QUEUE_LEN + 1) * sizeof(request_t)); //Create a temporary queue
 //	tmpQ[QUEUE_LEN] = new_request; //Add the request at the end of the q
 //	QUEUE = tmpQ; //Assign new queue to q.
-	while (QUEUE_START - QUEUE_LEN == 1) {
+	while (QUEUE_START - QUEUE_LEN == 1 || (QUEUE_START == 0 && QUEUE_LEN== 99)) {
 		// Queue is full
 		pthread_cond_wait(&queue_full_cond, &queue_mutex);
 	}
 	QUEUE[QUEUE_LEN % MAX_queue_len] = new_request;
 	printf("The oldest request is: %s\n", (char * ) QUEUE[QUEUE_START].request);
-	QUEUE_LEN += 1; //increment the length. The highest index will be QUEUE_LEN-1.
+	QUEUE_LEN = (QUEUE_LEN + 1) % MAX_queue_len; //increment the length. The highest index will be QUEUE_LEN-1.
 	pthread_cond_broadcast(&queue_empty_cond);
 	pthread_mutex_unlock(&queue_mutex);
 	printf("Successfully added to the queue! Queue is now size %d\n", QUEUE_LEN-QUEUE_START);
 	// Print queue:
-	for (int i = 0; i < QUEUE_LEN; i++) {
+	for (int i = QUEUE_START; i < QUEUE_LEN; i++) {
 		if(QUEUE[i].request != NULL) {
 			printf("QUEUE Entry %d: %s\n", i, QUEUE[i].request);
 		}
@@ -422,11 +427,11 @@ void * worker(void * arg) {
 		request_t cur_request;
 		pthread_mutex_lock(&worker_mutex);
 		pthread_cond_wait(&worker_cond, &worker_mutex);
-		if (QUEUE_LEN > 0) { //We don't want to waste time pulling requests if there aren't any.
+		if (QUEUE_LEN != QUEUE_START) { //We don't want to waste time pulling requests if there aren't any.
 			int start = getCurrentTimeInMills(); // Get a starting timestamp
 			printCache();
 			printf("\n");
-			printf("START OF REQUEST\n");
+			printf("START OF REQUEST END: %d START: %d\n", QUEUE_LEN, QUEUE_START);
 			printf("\n");
 			cur_request = removeRequestFromQueue();
 			printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
