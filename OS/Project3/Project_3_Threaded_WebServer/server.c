@@ -50,7 +50,8 @@ pthread_cond_t worker_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t gfd_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t gfd_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t queue_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t queue_full_cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t queue_empty_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cache_cond = PTHREAD_COND_INITIALIZER;
 
@@ -215,40 +216,57 @@ void initCache() {
 /* ************************************ Queue Code ********************************/
 request_t * QUEUE; //Create a global queue accessible by all threads. THIS IS A POINTER. This is important to remember
 int QUEUE_LEN = 0; //Length of the queue. Init at 0, change to however many queue requests we have.
+int QUEUE_START = 0;
 
 // Function to add the request and its file content into the queue
-void addIntoQueue(int fd, void * request) {
+void add_into_queue(int fd, void * request) {
 	//  printf("The size of the queue before here was %d. The size of a request is %d\n", sizeof(QUEUE),sizeof(request_t));
+	pthread_mutex_lock(&queue_mutex);
 	request_t new_request; //Create a new request. Put the request data in this request struct.
 	new_request.request = request;
 	new_request.fd = fd;
-	request_t * tmpQ = (request_t * ) malloc((QUEUE_LEN + 1) * sizeof(request_t)); //Create a temporary queue
-	tmpQ[QUEUE_LEN] = new_request; //Add the request at the end of the q
-	QUEUE = tmpQ; //Assign new queue to q.
-	printf("The oldest request is: %s\n", (char * ) QUEUE[QUEUE_LEN].request);
+//	request_t * tmpQ = (request_t * ) malloc((QUEUE_LEN + 1) * sizeof(request_t)); //Create a temporary queue
+//	tmpQ[QUEUE_LEN] = new_request; //Add the request at the end of the q
+//	QUEUE = tmpQ; //Assign new queue to q.
+	while (QUEUE_START - QUEUE_LEN == 1) {
+		// Queue is full
+		pthread_cond_wait(&queue_full_cond, &queue_mutex);
+	}
+	QUEUE[QUEUE_LEN % MAX_queue_len] = new_request;
+	printf("The oldest request is: %s\n", (char * ) QUEUE[QUEUE_START].request);
 	QUEUE_LEN += 1; //increment the length. The highest index will be QUEUE_LEN-1.
-	printf("Successfully added to the queue! Queue is now size %d\n", QUEUE_LEN);
+	pthread_cond_broadcast(&queue_empty_cond);
+	pthread_mutex_unlock(&queue_mutex);
+	printf("Successfully added to the queue! Queue is now size %d\n", QUEUE_LEN-QUEUE_START);
+	// Print queue:
 	for (int i = 0; i < QUEUE_LEN; i++) {
-		printf("QUEUE Entry %d: %s\n", i, QUEUE[i].request);
+		if(QUEUE[i].request != NULL) {
+			printf("QUEUE Entry %d: %s\n", i, QUEUE[i].request);
+		}
 	}
 }
 
 //Function to remove the first request in the queue, and decrement the queue length by one. Returns -1 if no queue
 //entries, and zero if there are.
 request_t removeRequestFromQueue() {
-	if (QUEUE_LEN > 0) {
-		request_t this_request = QUEUE[QUEUE_LEN - 1]; //The last index will always be the length of the queue minus one.
-		//    printf("%s\n", (char*)QUEUE[QUEUE_LEN].request);
-		request_t * tmpQ = (request_t * ) malloc((QUEUE_LEN - 1) * sizeof(request_t)); //Create a temporary queue that is one smaller
-		//TODO: Assign the data already in QUEUE from 1->QUEUE_LEN and assign to the tmp var.
-		QUEUE = tmpQ; //Assign this
-		QUEUE_LEN = QUEUE_LEN - 1;
-		printf("Successfully exited the remove request function. Removed request: %s\n", (char * ) this_request.request);
-		return this_request; //Added back the one to accomodate for the fact that we already changed the value of QUEUE_LEN
+	pthread_mutex_lock(&queue_mutex);
+	while (QUEUE_START == QUEUE_LEN) {
+		// Queue is empty
+		pthread_cond_wait(&queue_empty_cond, &queue_mutex);
 	}
-	//TODO: Figure out what to do if the queue is empty, may be okay to just sit and churn, idk
-	request_t *dud = (request_t*)malloc(sizeof(request_t));
-	return *dud;
+	request_t this_request = QUEUE[QUEUE_START]; //The last index will always be the length of the queue minus one.
+	printf("%s\n", (char*)QUEUE[QUEUE_START].request);
+	//request_t * tmpQ = (request_t * ) malloc((QUEUE_LEN - 1) * sizeof(request_t)); //Create a temporary queue that is one smaller
+	//TODO: Assign the data already in QUEUE from 1->QUEUE_LEN and assign to the tmp var.
+	//QUEUE[] = tmpQ; //Assign this
+	QUEUE_START = (QUEUE_START + 1) % MAX_queue_len;
+	pthread_cond_broadcast(&queue_full_cond);
+	pthread_mutex_unlock(&queue_mutex);
+	printf("Successfully exited the remove request function. Removed request: %s\n", (char * ) this_request.request);
+	return this_request;
+//	printf("Returning a dud from remove request \n");
+//	request_t *dud = (request_t*)malloc(sizeof(request_t));
+//	return *dud;
 }
 
 // clear the memory allocated to the queue
@@ -262,7 +280,7 @@ void deleteQueue() {
 // Function to initialize the queue
 void initQueue() {
 	// Allocating memory and initializing the cache array
-	QUEUE = malloc(MAX_CE * sizeof(struct request_queue)); //Create a block of memory the size of MAX_CE requests.
+	QUEUE = malloc(MAX_CE * sizeof(struct request_queue) * MAX_queue_len); //Create a block of memory the size of MAX_CE requests.
 	//Cache at the block of memory we asked for.
 	printf("Successfully initialized queue!\n");
 }
@@ -322,7 +340,8 @@ void * dispatch(void * arg) {
 				printf("Bad Request in Dispatch"); //TODO: Make sure this actually handles the error.
 			}
 			// Add the request into the queue
-			addIntoQueue(gfd, filename);
+			printf("Adding to queue\n");
+			add_into_queue(gfd, filename);
 			pthread_cond_broadcast(&worker_cond);
 		}
 		pthread_cond_broadcast(&gfd_cond);
@@ -443,13 +462,13 @@ void * worker(void * arg) {
 					requests_processed += 1;
 				}
 			}
+			printf("\n\n END OF REQUEST \n\n");
 		}
 		else{
 			pthread_cond_wait(&worker_mutex, &worker_cond);
 		}
 		pthread_cond_broadcast(&worker_cond);
 		pthread_mutex_unlock(&worker_mutex);
-
 		// return the result
 	}
 	return NULL;
@@ -530,6 +549,7 @@ int main(int argc, char ** argv) {
 	// Start the server and initialize cache
 	init(port);
 	initCache();
+	initQueue();
 
 	//   Create dispatcher and worker threads
 	pthread_t workers;
