@@ -179,6 +179,10 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 	strcpy(request_buf, request);
 	new_entry.request = strdup(request);
 	//  printf("The new entry has a request of %s\n", new_entry.request);
+
+	// Get size of the file
+
+
 	char content_buf[BUFF_SIZE];
 	strcpy(content_buf, memory);
 	new_entry.content = strdup(memory);
@@ -394,6 +398,10 @@ int readFromDisk(request_t cur_request, char * content_type) {
 	if ((fd = open(search, O_RDWR)) == -1) {
 		return_error(gfd, BUF);
 	};
+	struct stat st;
+	fstat(fd, st);
+	int size = st.st_size;
+	printf("This file has a size of %d\n", size);
 	int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
 	if ((bytes_read = read(fd, BUF, BUFF_SIZE)) == -1) {
 		return_error(gfd, BUF);
