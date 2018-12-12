@@ -159,23 +159,20 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 	printf("Entered the addIntoCache function\n");
 	cache_entry_t new_entry;
 	cache_entry_t * new_cache;
-printf("i have bananas");
 	if ((new_cache = malloc((CACHE_LEN + 1) * sizeof(cache_entry_t))) == NULL) {
 		perror("Failed to allocate memory for cache");
 	} //The location of the new cache.
-	printf("i have 1 bananas");
 	new_entry.request = strdup(request);
 	char content_buf[memory_size];
 	strcpy(content_buf, memory);
-	printf("i have 2 bananas");
 	new_entry.content = strdup(memory);
 	new_entry.len = memory_size;
 	for (int i = 0; i < CACHE_LEN; i++) {
 		new_cache[i] = CACHE[i]; //Copy over what we had before
 	}
-	printf("i have 3 bananas");
 	new_cache[CACHE_LEN] = new_entry; //Add the new entry at the end of the cache
 	CACHE_LEN += 1; //Indicate that we have added a new struct at the end of the array.
+	free(CACHE);
 	CACHE = new_cache; //new_cache now has the data we desire.
 	for (int i = 0; i < CACHE_LEN; i++) {
 		printf("The new cache has at the %d position: %s\n", i, CACHE[i].request);
@@ -361,7 +358,7 @@ void worker_log_results(int worker_id, int requests_processed, int gfd, char * r
 
 // Function to open and read the file from the disk into the memory
 // Add necessary arguments as needed
-int readFromDisk(request_t cur_request, char * content_type, char * BUF) {
+int readFromDisk(request_t cur_request, char * content_type, char ** BUF) {
 	printf("Have to search the disk for file %s.\n", cur_request.request);
 	/**MAYBE put this green wrapped code in a function by itself. **/
 	int gfd = cur_request.fd;
@@ -378,14 +375,14 @@ int readFromDisk(request_t cur_request, char * content_type, char * BUF) {
 	struct stat boof;
 	fstat(fd, &boof);
 	int size = boof.st_size;
-	BUF = malloc(size * sizeof(char));
+	*BUF = (char*)malloc(size * sizeof(char));
 	// char BUF[size]; // This is where we are storing the file. Will send this pointer to the cache.
 	int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
-	if ((bytes_read = read(fd, BUF, size)) == -1) {
-		return_error(gfd, BUF);
+	if ((bytes_read = read(fd, *BUF, size)) == -1) {
+		return_error(gfd, *BUF);
 	}; //Read the data stored at that location into the Buffer we provide.
 	close(fd);
-	return bytes_read;
+	return size;
 	/** Code that could be in on **/
 
 	// char* REQUEST = (char*)malloc(cur_request.request);
@@ -456,13 +453,13 @@ void * worker(void * arg) {
 					requests_processed += 1;
 				} else {
 					char* BUF;
-					int bytes_read = readFromDisk(cur_request, content_type, BUF);	// Also adds to cache and returns result
+					int bytes_read = readFromDisk(cur_request, content_type, &BUF);	// Also adds to cache and returns result
 
 					// char* REQUEST = (char*)malloc(cur_request.request);
-					//char* REQUEST = strdup(cur_request.request);
-
-					//strcpy(REQUEST, (char *) cur_request.request);
-					//addIntoCache(REQUEST, BUF, size);	//Add entry to cache. copy buf in there
+					char* REQUEST = strdup(cur_request.request);
+					strcpy(REQUEST, (char *) cur_request.request);
+					//addIntoCache(REQUEST, BUF, bytes_read);	//Add entry to cache. copy buf in there
+					free(REQUEST);
 
 					printf("Gonna return the result");
 					int end = getCurrentTimeInMills();
