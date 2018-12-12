@@ -12,6 +12,7 @@
 #include "util.h"
 #include <stdbool.h>
 
+
 #define MAX_THREADS 100
 #define MAX_queue_len 100
 #define MAX_cache_len 100
@@ -64,13 +65,13 @@ void * dynamic_pool_size_update(void * arg) {
 /**********************************************************************************/
 
 /* ************************************ Array Operations ********************************/
-void slice_queue(request_t * src, request_t * dest, int start, int end) {
-	int pos_in_dest = 0;
-	for (int i = start; i < end; i++) {
-		dest[pos_in_dest] = src[i];
-		pos_in_dest++;
-	}
-}
+// void slice_queue(request_t * src, request_t * dest, int start, int end) {
+// 	int pos_in_dest = 0;
+// 	for (int i = start; i < end; i++) {
+// 		dest[pos_in_dest] = src[i];
+// 		pos_in_dest++;
+// 	}
+// }
 /**********************************************************************************/
 
 /** Integer to ASCII **/
@@ -188,8 +189,7 @@ printf("i have bananas");
 void deleteCache() {
 	// De-allocate/free the cache memory
 	CACHE_LEN = 0;
-	cache_entry_t * new_cache = malloc(0);
-	CACHE = new_cache;
+	free(CACHE);
 }
 
 // Function to initialize the cache
@@ -256,8 +256,7 @@ request_t removeRequestFromQueue() {
 // clear the memory allocated to the queue
 void deleteQueue() {
 	// De-allocate/free the queue memory
-	request_t * tmpQ = malloc(0);
-	QUEUE = tmpQ;
+	free(QUEUE);
 	QUEUE_LEN = 0;
 	printf("I have deleted everything from the Queue\n");
 }
@@ -380,7 +379,8 @@ int readFromDisk(request_t cur_request, char * content_type) {
 	struct stat boof;
 	fstat(fd, &boof);
 	int size = boof.st_size;
-	char BUF[size]; // This is where we are storing the file. Will send this pointer to the cache.
+	char* BUF = malloc(size * sizeof(char));
+	// char BUF[size]; // This is where we are storing the file. Will send this pointer to the cache.
 	int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
 	if ((bytes_read = read(fd, BUF, size)) == -1) {
 		return_error(gfd, BUF);
@@ -389,19 +389,22 @@ int readFromDisk(request_t cur_request, char * content_type) {
 	/** Code that could be in on **/
 
 	// char* REQUEST = (char*)malloc(cur_request.request);
-	char* REQUEST = strdup(cur_request.request);
+	//char* REQUEST = strdup(cur_request.request);
 
 	//strcpy(REQUEST, (char *) cur_request.request);
 	//addIntoCache(REQUEST, BUF, size);	//Add entry to cache
 
 	//printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; size: %d\n", fd, content_type,
 	 //      BUF, size);
+	 printf("Gonna return the result");
 	if (return_result(gfd, content_type, BUF, size) != -1) {
 		printf("Successfully returned a result\n");
+		free(BUF);
 		return bytes_read;
 	} else {
 		char ERR_BUF[BUFF_SIZE] = "Error - bad request";
 		return_error(gfd, ERR_BUF);
+		free(BUF);
 		return -1;
 	}
 }
@@ -575,7 +578,7 @@ int main(int argc, char ** argv) {
 	for (worker_count = 0; worker_count < num_workers; worker_count++) {
 		void * args;
 		args = worker_count;
-		pthread_create(workers + 1, NULL, worker, worker_count);
+		pthread_create(workers + worker_count, NULL, worker, worker_count);
 	}
 	pthread_t* dispatchers;
 	if ((dispatchers = (pthread_t *)calloc(num_dispatcher, sizeof(pthread_t))) == NULL) {
@@ -583,15 +586,31 @@ int main(int argc, char ** argv) {
 	}
 	int dispatch_count = 0;
 	for (dispatch_count = 0; dispatch_count < num_dispatcher; dispatch_count++) {
-		pthread_create(dispatchers + 1, NULL, dispatch, dispatch_count);
+		pthread_create(dispatchers + dispatch_count, NULL, dispatch, dispatch_count);
 	}
+
 	for(int i = 0; i < num_dispatcher;i++) {
-		pthread_join(dispatchers[i],
-		             NULL);
+		if (pthread_equal(pthread_self(), dispatchers[i]))
+			continue;
+		if (pthread_join(dispatchers[i], NULL) == 0)
+			printf("\n\nJoining dispatcher\n\n");
+		else
+			perror("\n\nfailed to join dispatcher...\n\n");
 	}
+	free(dispatchers);
+
+	for(int i = 0; i < num_workers; i++) {
+		if (pthread_equal(pthread_self(), workers[i]))
+			continue;
+		if (pthread_join(workers[i], NULL) == 0)
+			printf("\n\nJoining working\n\n");
+		else
+			perror("\n\nfailed to join worker...\n\n");
+	}
+	free(workers);
+
 	// Clean up
 	deleteCache();
 	deleteQueue();
-	printf("Successfully Started Up\n");
 	return 0;
 }
