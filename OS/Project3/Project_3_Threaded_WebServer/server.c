@@ -458,7 +458,7 @@ void * worker(void * arg) {
 					// char* REQUEST = (char*)malloc(cur_request.request);
 					char* REQUEST = strdup(cur_request.request);
 					strcpy(REQUEST, (char *) cur_request.request);
-					//addIntoCache(REQUEST, BUF, bytes_read);	//Add entry to cache. copy buf in there
+					addIntoCache(REQUEST, BUF, bytes_read);	//Add entry to cache. copy buf in there
 					free(REQUEST);
 
 					printf("Gonna return the result");
