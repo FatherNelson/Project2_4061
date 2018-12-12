@@ -41,7 +41,7 @@ typedef struct cache_entry {
 
 /**GLOBAL VARIABLES**/
 //int gfd; // Descriptor for further request processing
-pthread_mutex_t dispatch_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t dispatch_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t worker_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t worker_cond = PTHREAD_COND_INITIALIZER;
@@ -342,27 +342,26 @@ void * dispatch(void * arg) {
 void worker_log_results(int worker_id, int requests_processed, int gfd, char * request_string,
                         int bytes_read, int time_of_request, char * hit_miss) {
 	char str[BUFF_SIZE]; // This is where the full request will be placed.
-	char id[INT_SIZE]; //This is the worker id
-	itoa(worker_id, id, STD_BASE);
-	char reqNum[INT_SIZE]; //This is the number of requests processed by this worker so far
-	itoa(requests_processed, reqNum, STD_BASE);
-	char acfd[INT_SIZE]; //This is the fd given to us by accept_connection()
-	itoa(gfd, acfd, STD_BASE);
-	char bytes_error[INT_SIZE];
-	itoa(bytes_read, bytes_error, STD_BASE);
-	char time[INT_SIZE]; //This is the time of the request
-	itoa(time_of_request, time, STD_BASE);
-	//TODO: Protect these printf statements. They are for formatted output and need to be locked because of thread safety.
-	printf("[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
-	sprintf(str, "[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
+	// char id[INT_SIZE]; //This is the worker id
+	// itoa(worker_id, id, STD_BASE);
+	// char reqNum[INT_SIZE]; //This is the number of requests processed by this worker so far
+	// itoa(requests_processed, reqNum, STD_BASE);
+	// char acfd[INT_SIZE]; //This is the fd given to us by accept_connection()
+	// itoa(gfd, acfd, STD_BASE);
+	// char bytes_error[INT_SIZE];
+	// itoa(bytes_read, bytes_error, STD_BASE);
+	// char time[INT_SIZE]; //This is the time of the request
+	// itoa(time_of_request, time, STD_BASE);
+	// printf("[%d][%d][%d][%s][%d][%dmS][%s]\n", worker_id, requests_processed, gfd, request_string, bytes_read, time_of_request, hit_miss);
+	sprintf(str, "[%d][%d][%d][%s][%d][%dmS][%s]\n", worker_id, requests_processed, gfd, request_string, bytes_read, time_of_request, hit_miss);
 	int log_fd = open("./web_server_log", O_WRONLY | O_APPEND);
-	write(log_fd, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
+	write(log_fd, str, strlen(str));
 	close(log_fd);
 }
 
 // Function to open and read the file from the disk into the memory
 // Add necessary arguments as needed
-int readFromDisk(request_t cur_request, char * content_type) {
+int readFromDisk(request_t cur_request, char * content_type, char * BUF) {
 	printf("Have to search the disk for file %s.\n", cur_request.request);
 	/**MAYBE put this green wrapped code in a function by itself. **/
 	int gfd = cur_request.fd;
@@ -379,13 +378,14 @@ int readFromDisk(request_t cur_request, char * content_type) {
 	struct stat boof;
 	fstat(fd, &boof);
 	int size = boof.st_size;
-	char* BUF = malloc(size * sizeof(char));
+	BUF = malloc(size * sizeof(char));
 	// char BUF[size]; // This is where we are storing the file. Will send this pointer to the cache.
 	int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
 	if ((bytes_read = read(fd, BUF, size)) == -1) {
 		return_error(gfd, BUF);
 	}; //Read the data stored at that location into the Buffer we provide.
 	close(fd);
+	return bytes_read;
 	/** Code that could be in on **/
 
 	// char* REQUEST = (char*)malloc(cur_request.request);
@@ -396,17 +396,7 @@ int readFromDisk(request_t cur_request, char * content_type) {
 
 	//printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; size: %d\n", fd, content_type,
 	 //      BUF, size);
-	 printf("Gonna return the result");
-	if (return_result(gfd, content_type, BUF, size) != -1) {
-		printf("Successfully returned a result\n");
-		free(BUF);
-		return bytes_read;
-	} else {
-		char ERR_BUF[BUFF_SIZE] = "Error - bad request";
-		return_error(gfd, ERR_BUF);
-		free(BUF);
-		return -1;
-	}
+
 }
 
 // Function to retrieve the request from the queue, process it and then return a result to the client
@@ -435,8 +425,9 @@ void * worker(void * arg) {
 				// Queue is empty
 				pthread_cond_wait(&queue_empty_cond, &queue_mutex);
 			}
-			int start = getCurrentTimeInMills();
 			cur_request = removeRequestFromQueue();
+			int start = getCurrentTimeInMills();
+			printf("start time: %d", start);
 			pthread_cond_broadcast(&queue_full_cond);
 			pthread_mutex_unlock(&queue_mutex);
 			//End Critical Section
@@ -454,24 +445,49 @@ void * worker(void * arg) {
 				if ((cache_index = getCacheIndex(cur_request.request)) >= 0) {
 					printf("Found the request in the cache at position %d\n", cache_index);
 					// New cache entries will be added at the end, so index is still valid.  No mutex needed.
-					return_result(gfd, content_type, CACHE[cache_index].content, CACHE[cache_index].len);
 					int end = getCurrentTimeInMills();
+					printf("end time: %d", end);
+					return_result(gfd, content_type, CACHE[cache_index].content, CACHE[cache_index].len);
 					time_of_request = end - start;
+					pthread_mutex_lock(&log_mutex);
 					worker_log_results(worker_id, requests_processed, gfd, CACHE[cache_index].request,
 					                   CACHE[cache_index].len, time_of_request, "HIT");
+					pthread_mutex_unlock(&log_mutex);
 					requests_processed += 1;
 				} else {
-					int bytes_read = readFromDisk(cur_request, content_type);	// Also adds to cache and returns result
-					// Stop recording the time
+					char* BUF;
+					int bytes_read = readFromDisk(cur_request, content_type, BUF);	// Also adds to cache and returns result
+
+					// char* REQUEST = (char*)malloc(cur_request.request);
+					//char* REQUEST = strdup(cur_request.request);
+
+					//strcpy(REQUEST, (char *) cur_request.request);
+					//addIntoCache(REQUEST, BUF, size);	//Add entry to cache. copy buf in there
+
+					printf("Gonna return the result");
 					int end = getCurrentTimeInMills();
+				 if (return_result(gfd, content_type, BUF, bytes_read) != -1) {
+				 	printf("Successfully returned a result\n");
+				 	free(BUF);
+				 } else {
+				 	char ERR_BUF[BUFF_SIZE] = "Error - bad request";
+				 	return_error(gfd, ERR_BUF);
+				 	free(BUF);
+				 }
+
+
+					// Stop recording the time
+
 					time_of_request = end - start;
 
 					//struct stat boof;
 					//fstat(gfd, &boof);
 					//int size = boof.st_size;
 					// Log the request into the file and terminal
+					pthread_mutex_lock(&log_mutex);
 					worker_log_results(worker_id, requests_processed, gfd, cur_request.request, bytes_read, time_of_request,
 					                   "MISS");
+					pthread_mutex_unlock(&log_mutex);
 					//Cache the results
 					//char BUF[BUFF_SIZE];
 					//char REQUEST[size];
