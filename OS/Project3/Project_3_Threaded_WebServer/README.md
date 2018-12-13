@@ -45,6 +45,8 @@ when a new request was made, the cache would store a new resource within the cac
 the response would originate from the randomly populated cache rather than via a disk lookup. The cache had no
 policy for dealing with overflow as it was assumed that the number of cached resources would be few enough that the
 cache could grow indefinitely. So, for every new request a new cache entry was made, thus avoiding an upper bound.
+There was an LRU implementation where before every addition to the cache, there was an attempt to sort the most queried
+cache requests at the front of the cache. 
 
 4. Explanation of policy to dynamically change the worker thread pool size
 N/A

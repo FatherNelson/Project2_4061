@@ -64,6 +64,7 @@ void printCache() {
 		printf("Cache Entry %d: %s\n", i, CACHE[i].request);
 	}
 }
+//A basic insertion sort algorithm to implement LRU
 void insertionSort(cache_entry_t arr[])
 {
 	int i, j;
