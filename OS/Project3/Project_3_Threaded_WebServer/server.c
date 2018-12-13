@@ -32,6 +32,7 @@ typedef struct request_queue {
 typedef struct cache_entry {
 	int len;
 	int accessed;
+
 	char * request;
 	char * content;
 }
@@ -75,7 +76,7 @@ void insertionSort(cache_entry_t arr[])
 		/* Move elements of arr[0..i-1], that are
 		   greater than key, to one position ahead
 		   of their current position */
-		while (j >= 0 && arr[j].accessed > key.accessed)
+		while (j >= 0 && arr[j].accessed < key.accessed)
 		{
 			arr[j+1] = arr[j];
 			j = j-1;
@@ -89,12 +90,25 @@ void insertionSort(cache_entry_t arr[])
 int getCacheIndex(char * request) {
 	/// return the index if the request is present in the cache, return -1 if not in cache
 	int index = -1;
-	int repeat = -2;
 //	cache_entry_t requested_entry;
 	for (int i = 0; i < CACHE_LEN; i++) {
 		if (strcmp(CACHE[i].request, request) == 0) {
 			CACHE[i].accessed +=1;
-			return repeat;
+			return i;
+		}
+	}
+	//when adding to the cache, make sure that cache entry with the most accesses is at the front of the cache
+	return index;
+}
+
+int checkForRepeatInCache(char * request) {
+	/// return the index if the request is present in the cache, return -1 if not in cache
+	int index = -1;
+//	cache_entry_t requested_entry;
+	for (int i = 0; i < CACHE_LEN; i++) {
+		if (strcmp(CACHE[i].request, request) == 0) {
+			CACHE[i].accessed +=1;
+			return i;
 		}
 	}
 	//when adding to the cache, make sure that cache entry with the most accesses is at the front of the cache
@@ -104,7 +118,7 @@ int getCacheIndex(char * request) {
 // Function to add the request and its file content into the cache
 void addIntoCache(char * request, char * memory, int memory_size) {
 	pthread_mutex_lock(&cache_mutex);
-	if(getCacheIndex(request) == -2) {
+	if(checkForRepeatInCache(request) > 0) {
 		insertionSort(CACHE);
 		pthread_mutex_unlock(&cache_mutex);
 		return;
