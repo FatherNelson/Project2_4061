@@ -12,7 +12,6 @@
 #include "util.h"
 #include <stdbool.h>
 
-
 #define MAX_THREADS 100
 #define MAX_queue_len 100
 #define MAX_cache_len 100
@@ -22,8 +21,6 @@
 #define STDOUT_FILENO 1
 #define INT_SIZE 8
 #define STD_BASE 10
-
-//TODO: 3) Perform Analytics
 
 // structs:
 typedef struct request_queue {
@@ -40,9 +37,7 @@ typedef struct cache_entry {
 		cache_entry_t;
 
 /**GLOBAL VARIABLES**/
-//int gfd; // Descriptor for further request processing
-pthread_mutex_t dispatch_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t dispatch_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t worker_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t worker_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t gfd_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -52,79 +47,6 @@ pthread_cond_t queue_full_cond = PTHREAD_COND_INITIALIZER;
 pthread_cond_t queue_empty_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cache_cond = PTHREAD_COND_INITIALIZER;
-
-/* ************************ Dynamic Pool Code ***********************************/
-// Extra Credit: This function implements the policy to change the worker thread pool dynamically
-// depending on the number of requests
-void * dynamic_pool_size_update(void * arg) {
-	while (1) {
-		// Run at regular intervals
-		// Increase / decrease dynamically based on your policy
-	}
-}
-/**********************************************************************************/
-
-/* ************************************ Array Operations ********************************/
-// void slice_queue(request_t * src, request_t * dest, int start, int end) {
-// 	int pos_in_dest = 0;
-// 	for (int i = start; i < end; i++) {
-// 		dest[pos_in_dest] = src[i];
-// 		pos_in_dest++;
-// 	}
-// }
-/**********************************************************************************/
-
-/** Integer to ASCII **/
-// inline function to swap two numbers
-void swap(char * first_number, char * second_number) {
-	char t = * first_number;* first_number = * second_number;* second_number = t;
-}
-
-// function to reverse buffer[i..j]
-char * reverse(char * buf, int i, int j) {
-	while (i < j)
-		swap( & buf[i++], & buf[j--]);
-	return buf;
-}
-
-// Iterative function to implement itoa() function in C
-char * itoa(int number, char * buf, int base) {
-	// invalid input
-	if (base < 2 || base > 32)
-		return buf;
-
-	// consider absolute value of number
-	int n = abs(number);
-
-	int i = 0;
-	while (n) {
-		int r = n % base;
-
-		if (r >= 10)
-			buf[i++] = 65 + (r - 10);
-		else
-			buf[i++] = 48 + r;
-
-		n = n / base;
-	}
-
-	// if number is 0
-	if (i == 0)
-		buf[i++] = '0';
-
-	// If base is 10 and value is negative, the resulting string
-	// is preceded with a minus sign (-)
-	// With any other base, value is always considered unsigned
-	if (number < 0 && base == 10)
-		buf[i++] = '-';
-
-	buf[i] = '\0'; // null terminate string
-
-	// reverse the string and return it
-	return reverse(buf, 0, i - 1);
-}
-
-/** **/
 
 /* ************************************ Cache Code ********************************/
 
@@ -154,35 +76,32 @@ int getCacheIndex(char * request) {
 
 // Function to add the request and its file content into the cache
 void addIntoCache(char * request, char * memory, int memory_size) {
+	pthread_mutex_lock(&cache_mutex);
 	// It should add the request at an index according to the cache replacement policy
 	// Make sure to allocate/free memeory when adding or replacing cache entries
-	printf("Entered the addIntoCache function\n");
 	cache_entry_t new_entry;
 	cache_entry_t * new_cache;
-printf("i have bananas");
 	if ((new_cache = malloc((CACHE_LEN + 1) * sizeof(cache_entry_t))) == NULL) {
 		perror("Failed to allocate memory for cache");
 	} //The location of the new cache.
-	printf("i have 1 bananas");
 	new_entry.request = strdup(request);
 	char content_buf[memory_size];
 	strcpy(content_buf, memory);
-	printf("i have 2 bananas");
 	new_entry.content = strdup(memory);
 	new_entry.len = memory_size;
 	for (int i = 0; i < CACHE_LEN; i++) {
 		new_cache[i] = CACHE[i]; //Copy over what we had before
 	}
-	printf("i have 3 bananas");
 	new_cache[CACHE_LEN] = new_entry; //Add the new entry at the end of the cache
 	CACHE_LEN += 1; //Indicate that we have added a new struct at the end of the array.
+	free(CACHE);
 	CACHE = new_cache; //new_cache now has the data we desire.
 	for (int i = 0; i < CACHE_LEN; i++) {
 		printf("The new cache has at the %d position: %s\n", i, CACHE[i].request);
 	}
 	printf("\n");
 	printCache();
-
+	pthread_mutex_unlock(&cache_mutex);
 }
 
 // clear the memory allocated to the cache
@@ -223,9 +142,9 @@ void add_into_queue(int fd, void * request) {
 	QUEUE_LEN = (QUEUE_LEN + 1) % MAX_queue_len; //increment the length. The highest index will be QUEUE_LEN-1.
 	pthread_cond_broadcast(&queue_empty_cond);
 	pthread_mutex_unlock(&queue_mutex);
-	printf("Added request to the queue Queue is now size %d\n", QUEUE_LEN-QUEUE_START);
+	printf("Added request to the queue. Queue is now size %d\n", QUEUE_LEN-QUEUE_START);
 	// Print queue:
-	for (int i = QUEUE_START; i < QUEUE_LEN; i++) {	// fix to wrap around
+	for (int i = QUEUE_START; i < QUEUE_LEN; i++) {
 		printf("%d", i);
 		if(QUEUE[i].request != NULL) {
 			printf("QUEUE Entry %d: %s\n", i, QUEUE[i].request);
@@ -242,15 +161,9 @@ void add_into_queue(int fd, void * request) {
 request_t removeRequestFromQueue() {
 	request_t this_request = QUEUE[QUEUE_START]; //The last index will always be the length of the queue minus one.
 	printf("%s\n", (char*)QUEUE[QUEUE_START].request);
-	//request_t * tmpQ = (request_t * ) malloc((QUEUE_LEN - 1) * sizeof(request_t)); //Create a temporary queue that is one smaller
-	//TODO: Assign the data already in QUEUE from 1->QUEUE_LEN and assign to the tmp var.
-	//QUEUE[] = tmpQ; //Assign this
 	QUEUE_START = (QUEUE_START + 1) % MAX_queue_len;
-	printf("Successfully exited the remove request function. Removed request: %s\n", (char * ) this_request.request);
+	printf("Removed request: %s\n", (char * ) this_request.request);
 	return this_request;
-//	printf("Returning a dud from remove request \n");
-//	request_t *dud = (request_t*)malloc(sizeof(request_t));
-//	return *dud;
 }
 
 // clear the memory allocated to the queue
@@ -258,7 +171,7 @@ void deleteQueue() {
 	// De-allocate/free the queue memory
 	free(QUEUE);
 	QUEUE_LEN = 0;
-	printf("I have deleted everything from the Queue\n");
+	printf("Queue Deleted\n");
 }
 // Function to initialize the queue
 void initQueue() {
@@ -312,10 +225,8 @@ void * dispatch(void * arg) {
 	while (1) {
 		// Accept client connection
 		char filename[BUFF_SIZE]; //Holds the filename
-//		pthread_mutex_lock(&gfd_mutex); //Acquire the mutex
-		//TODO: Determine if a global access to this return result is appropriate. More than likely is not so we need ITC
 		int gfd = accept_connection(); //Gets the file descriptor. This is a blocking call until we receive a connection
-		printf("I found an fd of %d\n", gfd);
+		printf("connected, fd is %d\n", gfd);
 		if (gfd > 0) { //if we actually secure a connection
 
 			// Get request from the client
@@ -328,11 +239,8 @@ void * dispatch(void * arg) {
 				// Lock will be acquired inside add_into_queue
 				printf("Adding to queue\n");
 				add_into_queue(gfd, filename);
-//				pthread_cond_broadcast(&worker_cond);
 			}
 		}
-//		pthread_cond_broadcast(&gfd_cond);
-//		pthread_mutex_unlock(&gfd_mutex);
 	}
 	return NULL;
 }
@@ -342,35 +250,21 @@ void * dispatch(void * arg) {
 void worker_log_results(int worker_id, int requests_processed, int gfd, char * request_string,
                         int bytes_read, int time_of_request, char * hit_miss) {
 	char str[BUFF_SIZE]; // This is where the full request will be placed.
-	char id[INT_SIZE]; //This is the worker id
-	itoa(worker_id, id, STD_BASE);
-	char reqNum[INT_SIZE]; //This is the number of requests processed by this worker so far
-	itoa(requests_processed, reqNum, STD_BASE);
-	char acfd[INT_SIZE]; //This is the fd given to us by accept_connection()
-	itoa(gfd, acfd, STD_BASE);
-	char bytes_error[INT_SIZE];
-	itoa(bytes_read, bytes_error, STD_BASE);
-	char time[INT_SIZE]; //This is the time of the request
-	itoa(time_of_request, time, STD_BASE);
-	//TODO: Protect these printf statements. They are for formatted output and need to be locked because of thread safety.
-	printf("[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
-	sprintf(str, "[%s][%s][%s][%s][%s][%smS][%s]\n", id, reqNum, acfd, request_string, bytes_error, time, hit_miss);
+	sprintf(str, "[%d][%d][%d][%s][%d][%dmS][%s]\n", worker_id, requests_processed, gfd, request_string, bytes_read, time_of_request, hit_miss);
 	int log_fd = open("./web_server_log", O_WRONLY | O_APPEND);
-	write(log_fd, str, strlen(str)); //TODO: Make all of the print statements system calls to write b/c thread safe
+	write(log_fd, str, strlen(str));
 	close(log_fd);
 }
 
 // Function to open and read the file from the disk into the memory
 // Add necessary arguments as needed
-int readFromDisk(request_t cur_request, char * content_type) {
+int readFromDisk(request_t cur_request, char * content_type, char ** BUF) {
 	printf("Have to search the disk for file %s.\n", cur_request.request);
-	/**MAYBE put this green wrapped code in a function by itself. **/
 	int gfd = cur_request.fd;
 	char search[BUFF_SIZE];
 	strcpy(search, "\0"); //Clear the string to start.
 	strcat(search, "./testing");
 	strcat(search, cur_request.request);
-	printf("Have built the search string %s\n", search);
 	int fd = -1; //The fd of the file we are pulling from the disk. -1 would indicate an error.
 	if ((fd = open(search, O_RDWR)) == -1) {
 		char ERR_BUF[BUFF_SIZE] = "Error - bad request";
@@ -379,34 +273,13 @@ int readFromDisk(request_t cur_request, char * content_type) {
 	struct stat boof;
 	fstat(fd, &boof);
 	int size = boof.st_size;
-	char* BUF = malloc(size * sizeof(char));
-	// char BUF[size]; // This is where we are storing the file. Will send this pointer to the cache.
+	*BUF = (char*)malloc(size * sizeof(char)); // This is where we are storing the file. Will send this pointer to the cache.
 	int bytes_read = -1; //This is how many bytes are returned by a successful request. Will be -1 if we failed.
-	if ((bytes_read = read(fd, BUF, size)) == -1) {
-		return_error(gfd, BUF);
+	if ((bytes_read = read(fd, *BUF, size)) == -1) {
+		return_error(gfd, *BUF);
 	}; //Read the data stored at that location into the Buffer we provide.
 	close(fd);
-	/** Code that could be in on **/
-
-	// char* REQUEST = (char*)malloc(cur_request.request);
-	//char* REQUEST = strdup(cur_request.request);
-
-	//strcpy(REQUEST, (char *) cur_request.request);
-	//addIntoCache(REQUEST, BUF, size);	//Add entry to cache
-
-	//printf("Will attempt to return file: fd:%d; content: %s; BUF:%s; size: %d\n", fd, content_type,
-	 //      BUF, size);
-	 printf("Gonna return the result");
-	if (return_result(gfd, content_type, BUF, size) != -1) {
-		printf("Successfully returned a result\n");
-		free(BUF);
-		return bytes_read;
-	} else {
-		char ERR_BUF[BUFF_SIZE] = "Error - bad request";
-		return_error(gfd, ERR_BUF);
-		free(BUF);
-		return -1;
-	}
+	return size;
 }
 
 // Function to retrieve the request from the queue, process it and then return a result to the client
@@ -421,10 +294,6 @@ void * worker(void * arg) {
 
 		// Get the request from the queue
 		request_t cur_request;
-		// pthread_mutex_lock(&worker_mutex);
-//		pthread_cond_wait(&worker_cond, &worker_mutex);
-//		if (QUEUE_LEN != QUEUE_START) { //We don't want to waste time pulling requests if there aren't any.
-			// printCache();
 			printf("\n");
 			printf("START OF REQUEST END: %d START: %d\n", QUEUE_LEN, QUEUE_START);
 			printf("\n");
@@ -435,15 +304,16 @@ void * worker(void * arg) {
 				// Queue is empty
 				pthread_cond_wait(&queue_empty_cond, &queue_mutex);
 			}
-			int start = getCurrentTimeInMills();
 			cur_request = removeRequestFromQueue();
+			int start = getCurrentTimeInMills();
+			printf("start time: %d", start);
 			pthread_cond_broadcast(&queue_full_cond);
 			pthread_mutex_unlock(&queue_mutex);
 			//End Critical Section
 			int gfd = cur_request.fd;
 
 			printf("The request I pulled in this worker thread has message %s\n", cur_request.request);
-			char content_type[128]; //TODO: Assign a size to buffers handling content size
+			char content_type[128];
 			strcpy(content_type, getContentType(cur_request.request));
 			if (strcmp(content_type, "C") != 0) { //If not asking to print out the cache.
 				printf("This request has a content type of %s\n", content_type); // Show us the c-type
@@ -454,41 +324,46 @@ void * worker(void * arg) {
 				if ((cache_index = getCacheIndex(cur_request.request)) >= 0) {
 					printf("Found the request in the cache at position %d\n", cache_index);
 					// New cache entries will be added at the end, so index is still valid.  No mutex needed.
-					return_result(gfd, content_type, CACHE[cache_index].content, CACHE[cache_index].len);
 					int end = getCurrentTimeInMills();
+					printf("end time: %d", end);
+					return_result(gfd, content_type, CACHE[cache_index].content, CACHE[cache_index].len);
 					time_of_request = end - start;
+					pthread_mutex_lock(&log_mutex);
 					worker_log_results(worker_id, requests_processed, gfd, CACHE[cache_index].request,
 					                   CACHE[cache_index].len, time_of_request, "HIT");
+					pthread_mutex_unlock(&log_mutex);
 					requests_processed += 1;
 				} else {
-					int bytes_read = readFromDisk(cur_request, content_type);	// Also adds to cache and returns result
-					// Stop recording the time
-					int end = getCurrentTimeInMills();
-					time_of_request = end - start;
+					char* BUF;
+					int bytes_read = readFromDisk(cur_request, content_type, &BUF);	// Also adds to cache and returns result
 
-					//struct stat boof;
-					//fstat(gfd, &boof);
-					//int size = boof.st_size;
+					char* REQUEST = strdup(cur_request.request);
+					strcpy(REQUEST, (char *) cur_request.request);
+					addIntoCache(REQUEST, BUF, bytes_read);	//Add entry to cache. copy buf in there
+					free(REQUEST);
+
+					printf("Gonna return the result");
+					int end = getCurrentTimeInMills();
+				 if (return_result(gfd, content_type, BUF, bytes_read) != -1) {
+				 	printf("Successfully returned a result\n");
+				 	free(BUF);
+				 } else {
+				 	char ERR_BUF[BUFF_SIZE] = "Error - bad request";
+				 	return_error(gfd, ERR_BUF);
+				 	free(BUF);
+				 }
+					// Stop recording the time
+					time_of_request = end - start;
 					// Log the request into the file and terminal
+					pthread_mutex_lock(&log_mutex);
 					worker_log_results(worker_id, requests_processed, gfd, cur_request.request, bytes_read, time_of_request,
 					                   "MISS");
-					//Cache the results
-					//char BUF[BUFF_SIZE];
-					//char REQUEST[size];
-					//strcpy(REQUEST, (char * ) cur_request.request);
-					//addIntoCache(REQUEST, BUF, size);
+					pthread_mutex_unlock(&log_mutex);
 					requests_processed += 1;
 				}
 			}
 			printf("\n\n END OF REQUEST \n\n");
 		}
-//		else{
-//			pthread_cond_wait(&worker_cond, &worker_mutex);
-//		}
-//		pthread_cond_broadcast(&worker_cond);
-//		pthread_mutex_unlock(&worker_mutex);
-		// return the result
-
 	return NULL;
 }
 /**********************************************************************************/
@@ -557,7 +432,6 @@ int main(int argc, char ** argv) {
 		printf("Please specify a cache size between 1 and 100\n "
 		       "run \" ./web_server -h \" for help\n ");
 	}
-	//TODO: Error check the path variable on startup
 	if (num_dispatcher < 0 || num_workers < 0 || dynamic_flag < 0 || qlen < 0 || cache_entries < 0) {
 		printf("You must enter a positive integer for these number, run \" ./web_server -h \" for help\n");
 		return 0;
