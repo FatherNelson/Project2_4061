@@ -32,7 +32,7 @@ typedef struct request_queue {
 typedef struct cache_entry {
 	int len;
 	int accessed;
-
+	int time_cached;
 	char * request;
 	char * content;
 }
@@ -138,6 +138,8 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 		strcpy(content_buf, memory);
 		new_entry.content = strdup(memory);
 		new_entry.len = memory_size;
+		new_entry.accessed = 0;
+		 printf("%s\n", getCurrentTimeInMills());
 		for (int i = 0; i < CACHE_LEN; i++) {
 			new_cache[i] = CACHE[i]; //Copy over what we had before
 		}

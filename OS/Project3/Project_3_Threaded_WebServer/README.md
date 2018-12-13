@@ -46,7 +46,8 @@ the response would originate from the randomly populated cache rather than via a
 policy for dealing with overflow as it was assumed that the number of cached resources would be few enough that the
 cache could grow indefinitely. So, for every new request a new cache entry was made, thus avoiding an upper bound.
 There was an LRU implementation where before every addition to the cache, there was an attempt to sort the most queried
-cache requests at the front of the cache. 
+cache requests at the front of the cache. This had the dual effect of making lookup times for frequent searches
+faster as well as shortening the amount of cache queries stored. 
 
 4. Explanation of policy to dynamically change the worker thread pool size
 N/A
