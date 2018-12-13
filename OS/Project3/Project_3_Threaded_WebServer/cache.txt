@@ -1,0 +1,5 @@
+The cache, to avoid having a hard limit on size, was made to be a dynamically allocated cache. That is,
+when a new request was made, the cache would store a new resource within the cache and on subsequent requests
+the response would originate from the randomly populated cache rather than via a disk lookup. The cache had no
+policy for dealing with overflow as it was assumed that the number of cached resources would be few enough that the
+cache could grow indefinitely. So, for every new request a new cache entry was made, thus avoiding an upper bound.
