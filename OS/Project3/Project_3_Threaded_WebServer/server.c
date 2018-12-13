@@ -31,6 +31,7 @@ typedef struct request_queue {
 
 typedef struct cache_entry {
 	int len;
+	int accessed;
 	char * request;
 	char * content;
 }
@@ -62,21 +63,48 @@ void printCache() {
 		printf("Cache Entry %d: %s\n", i, CACHE[i].request);
 	}
 }
+void insertionSort(cache_entry_t arr[])
+{
+	int i, j;
+	cache_entry_t key;
+	for (i = 1; i < CACHE_LEN; i++)
+	{
+		key = arr[i];
+		j = i-1;
+
+		/* Move elements of arr[0..i-1], that are
+		   greater than key, to one position ahead
+		   of their current position */
+		while (j >= 0 && arr[j].accessed > key.accessed)
+		{
+			arr[j+1] = arr[j];
+			j = j-1;
+		}
+		arr[j+1] = key;
+	}
+	return;
+}
 
 // Function to check whether the given request is present in cache
 int getCacheIndex(char * request) {
 	/// return the index if the request is present in the cache, return -1 if not in cache
+	int index = -1;
+//	cache_entry_t requested_entry;
 	for (int i = 0; i < CACHE_LEN; i++) {
 		if (strcmp(CACHE[i].request, request) == 0) {
-			return i;
+			CACHE[i].accessed +=1;
+//			requested_entry = CACHE[i];
+			return -1;
 		}
 	}
-	return -1;
+	//when adding to the cache, make sure that cache entry with the most accesses is at the front of the cache
+	return index;
 }
 
 // Function to add the request and its file content into the cache
 void addIntoCache(char * request, char * memory, int memory_size) {
 	pthread_mutex_lock(&cache_mutex);
+	insertionSort(CACHE);
 	// It should add the request at an index according to the cache replacement policy
 	// Make sure to allocate/free memeory when adding or replacing cache entries
 	cache_entry_t new_entry;
@@ -85,6 +113,7 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 		perror("Failed to allocate memory for cache");
 	} //The location of the new cache.
 	new_entry.request = strdup(request);
+	new_entry.accessed = 0;
 	char content_buf[memory_size];
 	strcpy(content_buf, memory);
 	new_entry.content = strdup(memory);
@@ -98,6 +127,7 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 	CACHE = new_cache; //new_cache now has the data we desire.
 	for (int i = 0; i < CACHE_LEN; i++) {
 		printf("The new cache has at the %d position: %s\n", i, CACHE[i].request);
+		printf("Accessed %d times\n", CACHE[i].accessed);
 	}
 	printf("\n");
 	printCache();
