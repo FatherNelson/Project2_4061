@@ -39,6 +39,7 @@ typedef struct cache_entry {
 		cache_entry_t;
 
 /**GLOBAL VARIABLES**/
+int cache_entries;	// Max cache size, passed in as parameter
 pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t worker_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t worker_cond = PTHREAD_COND_INITIALIZER;
@@ -64,7 +65,7 @@ void printCache() {
 		printf("Cache Entry %d: %s\n", i, CACHE[i].request);
 	}
 }
-//A basic insertion sort algorithm to implement LRU
+//A basic insertion sort algorithm to implement LFU
 void insertionSort(cache_entry_t arr[])
 {
 	int i, j;
@@ -124,6 +125,22 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 		pthread_mutex_unlock(&cache_mutex);
 		return;
 	}
+	else if (CACHE_LEN > cache_entries - 1) {
+		// Cache is full - replace smallest entry
+		insertionSort(CACHE);
+		cache_entry_t new_entry;
+		new_entry.request = strdup(request);
+		new_entry.accessed = 0;
+		char content_buf[memory_size];
+		strcpy(content_buf, memory);
+		new_entry.content = strdup(memory);
+		new_entry.len = memory_size;
+		CACHE[CACHE_LEN-1] = new_entry;
+		printf("Cache full.  Replaced least frequently used entry.");
+		printCache();
+		pthread_mutex_unlock(&cache_mutex);
+		return;
+	}
 	else {
 		// It should add the request at an index according to the cache replacement policy
 		// Make sure to allocate/free memeory when adding or replacing cache entries
@@ -138,8 +155,6 @@ void addIntoCache(char * request, char * memory, int memory_size) {
 		strcpy(content_buf, memory);
 		new_entry.content = strdup(memory);
 		new_entry.len = memory_size;
-		new_entry.accessed = 0;
-		 printf("%s\n", getCurrentTimeInMills());
 		for (int i = 0; i < CACHE_LEN; i++) {
 			new_cache[i] = CACHE[i]; //Copy over what we had before
 		}
@@ -457,7 +472,7 @@ int main(int argc, char ** argv) {
 	int num_workers = atoi(argv[4]); // How many worker threads to start up
 	int dynamic_flag = atoi(argv[5]); // Indicates whether to make the thread pool size static or dynamic
 	int qlen = atoi(argv[6]); // Fixed bounded length of the queue.
-	int cache_entries = atoi(argv[7]); //The number of entries available in the cache
+	cache_entries = atoi(argv[7]); //The number of entries available in the cache
 
 	// Perform error checks on the input arguments
 	if (port < 1024 || port > 65535) {

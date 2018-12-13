@@ -10,17 +10,11 @@ make
 To run the server, type the following command:
 ./web_server <port> <path_to_testing>/testing <num_dispatch> <num_worker> 0 <queue_len> <cache_entries>
 where port is the unique desired port number, num_dispatch and num_worker are
-the number of dispatch and worker threads, and queue_len and cache_entries are arbitrary integers.
+the number of dispatch and worker threads, queue_len is an arbitrary integer,
+and cache_entries is the maximum number of entries in the cache.
 
 Queue_len is ignored because we decided to always make the queue maximum size
-anyway to minimize the possibility of it from running out, and cache_entries is
-ignored because we implemented a dynamically resizing cache in order to be able
-to cache as many entries as necessary.  This is significantly faster for certain
-use cases, such as a database that needs the same 300 files very frequently.  In
-reality, if the server were to be run for a long period of time, we would want
-to clear older entries from the cache; however, this server is intended to be
-run in short bursts.  We feel that these changes made for a more robust program
-with faster access times for this particular application.
+anyway to minimize the possibility of it from running out.   
 
 To get data from the server, simply use wget or a similar command such as curl,
 with a URL such as http://127.0.0.1:<port>/image/jpg/29.jpg, or enter the
@@ -35,19 +29,19 @@ pointers to wrap around within the array.  When a piece of data is requested, a
 worker searches the cache for it.  If in cache, the data is loaded from there.
 If not, the data is loaded from disk and then copied to cache so that future
 requests for that data don't require the server to load things from disk.  The
-server and threads run until interrupted with ctrl-C.  However, infrastructure
-is in place to rejoin the threads and clean up the program if we wanted to
-change this behavior.
+least frequently used cache entry is replaced if the cache is of greater size
+than specified in the initial args.  The server and threads run until
+interrupted with ctrl-C.  However, infrastructure is in place to rejoin the
+threads and clean up the program if we wanted to change this behavior.
 
 3. Explanation of caching mechanism used
 The cache, to avoid having a hard limit on size, was made to be a dynamically allocated cache. That is,
 when a new request was made, the cache would store a new resource within the cache and on subsequent requests
-the response would originate from the randomly populated cache rather than via a disk lookup. The cache had no
-policy for dealing with overflow as it was assumed that the number of cached resources would be few enough that the
-cache could grow indefinitely. So, for every new request a new cache entry was made, thus avoiding an upper bound.
-There was an LRU implementation where before every addition to the cache, there was an attempt to sort the most queried
+the response would originate from the randomly populated cache rather than via a disk lookup.
+So, for every new request a new cache entry was made, thus avoiding a hard upper bound.
+There was an LFU implementation where before every addition to the cache, there was an attempt to sort the most queried
 cache requests at the front of the cache. This had the dual effect of making lookup times for frequent searches
-faster as well as shortening the amount of cache queries stored. 
+faster as well as allowing easy replacement of entries at the end of the array.
 
 4. Explanation of policy to dynamically change the worker thread pool size
 N/A
@@ -57,9 +51,11 @@ N/A
 Grant: Wrote helper functions, error handlers,
 designed caching mechanism, Wrote the single threaded version of the program before the
 other group members implemented a multithreadable strategy. Managed tasks and architecture.
+Implemented cache sorting algorithm.
 
 Jake: Implemented request queue, implemented mutexes on queue and log file,
-dealt with memory cleanup, debugged code, helped implement multithreaded program
+dealt with memory cleanup, debugged code, helped implement multithreaded program,
+implemented cache replacement
 
 Kieran: Implemented mutex on cache, implemented thread joining, performed
 analytics, extensive debugging
