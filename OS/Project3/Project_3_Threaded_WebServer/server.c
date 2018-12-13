@@ -89,12 +89,12 @@ void insertionSort(cache_entry_t arr[])
 int getCacheIndex(char * request) {
 	/// return the index if the request is present in the cache, return -1 if not in cache
 	int index = -1;
+	int repeat = -2;
 //	cache_entry_t requested_entry;
 	for (int i = 0; i < CACHE_LEN; i++) {
 		if (strcmp(CACHE[i].request, request) == 0) {
 			CACHE[i].accessed +=1;
-//			requested_entry = CACHE[i];
-			return -1;
+			return repeat;
 		}
 	}
 	//when adding to the cache, make sure that cache entry with the most accesses is at the front of the cache
@@ -104,34 +104,40 @@ int getCacheIndex(char * request) {
 // Function to add the request and its file content into the cache
 void addIntoCache(char * request, char * memory, int memory_size) {
 	pthread_mutex_lock(&cache_mutex);
-	insertionSort(CACHE);
-	// It should add the request at an index according to the cache replacement policy
-	// Make sure to allocate/free memeory when adding or replacing cache entries
-	cache_entry_t new_entry;
-	cache_entry_t * new_cache;
-	if ((new_cache = malloc((CACHE_LEN + 1) * sizeof(cache_entry_t))) == NULL) {
-		perror("Failed to allocate memory for cache");
-	} //The location of the new cache.
-	new_entry.request = strdup(request);
-	new_entry.accessed = 0;
-	char content_buf[memory_size];
-	strcpy(content_buf, memory);
-	new_entry.content = strdup(memory);
-	new_entry.len = memory_size;
-	for (int i = 0; i < CACHE_LEN; i++) {
-		new_cache[i] = CACHE[i]; //Copy over what we had before
+	if(getCacheIndex(request) == -2) {
+		insertionSort(CACHE);
+		pthread_mutex_unlock(&cache_mutex);
+		return;
 	}
-	new_cache[CACHE_LEN] = new_entry; //Add the new entry at the end of the cache
-	CACHE_LEN += 1; //Indicate that we have added a new struct at the end of the array.
-	free(CACHE);
-	CACHE = new_cache; //new_cache now has the data we desire.
-	for (int i = 0; i < CACHE_LEN; i++) {
-		printf("The new cache has at the %d position: %s\n", i, CACHE[i].request);
-		printf("Accessed %d times\n", CACHE[i].accessed);
+	else {
+		// It should add the request at an index according to the cache replacement policy
+		// Make sure to allocate/free memeory when adding or replacing cache entries
+		cache_entry_t new_entry;
+		cache_entry_t *new_cache;
+		if ((new_cache = malloc((CACHE_LEN + 1) * sizeof(cache_entry_t))) == NULL) {
+			perror("Failed to allocate memory for cache");
+		} //The location of the new cache.
+		new_entry.request = strdup(request);
+		new_entry.accessed = 0;
+		char content_buf[memory_size];
+		strcpy(content_buf, memory);
+		new_entry.content = strdup(memory);
+		new_entry.len = memory_size;
+		for (int i = 0; i < CACHE_LEN; i++) {
+			new_cache[i] = CACHE[i]; //Copy over what we had before
+		}
+		new_cache[CACHE_LEN] = new_entry; //Add the new entry at the end of the cache
+		CACHE_LEN += 1; //Indicate that we have added a new struct at the end of the array.
+		free(CACHE);
+		CACHE = new_cache; //new_cache now has the data we desire.
+		for (int i = 0; i < CACHE_LEN; i++) {
+			printf("The new cache has at the %d position: %s\n", i, CACHE[i].request);
+			printf("Accessed %d times\n", CACHE[i].accessed);
+		}
+		printf("\n");
+		printCache();
+		pthread_mutex_unlock(&cache_mutex);
 	}
-	printf("\n");
-	printCache();
-	pthread_mutex_unlock(&cache_mutex);
 }
 
 // clear the memory allocated to the cache
