@@ -1,0 +1,12 @@
+GPU SITE: https://www.techpowerup.com/gpu-specs/iris-graphics-6100.c2627
+GPU:
+	Name: Intel Iris Graphics 620
+	1. Clock: 300MHz
+	2. FP32: 441.6 GFLOPS
+	3. FP64: 110.4 GFLOPS
+CPU:
+	Name: Intel® Core™ i7-8565U
+	1. Clock: 2.0 GHz
+RAM:
+	1. Clock: 2666MHz
+	2. Size: 16GB

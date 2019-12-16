@@ -1,0 +1,29 @@
+*** The  HINT  PERFORMANCE ANALYZER ***
+        Version 1.0  June 1994
+   John L. Gustafson & Quinn O. Snell
+     Scalable Computing Laboratory
+   236 Wilhelm, Iowa State University
+        Ames, Iowa    50011-3020
+            (515) 294 - 9294
+
+Copyright (C) 1994 Iowa State University Research Foundation, Inc.
+Please send results and questions to:   hint@scl.ameslab.gov
+When sending results please follow the form in README
+________________________________________________________
+Apparent number of bits of accuracy: 53
+Maximum associative whole number:    9007199254740991
+Maximum number of bits of index:     31
+Maximum representable index:         -2147483648
+
+Index-limited data accuracy:         53 bits
+Maximum usable whole number:         9007199254740991
+Grid: 67108864 wide by 134217728 high.
+..........................................................................hint(37559,0x1156fe5c0) malloc: can't allocate region
+*** mach_vm_map(size=18446744071641640960) failed (error code=3)
+hint(37559,0x1156fe5c0) malloc: *** set a breakpoint in malloc_error_break to debug
+
+This run was memory limited at 30931336 subintervals -> 2063890920 bytes
+
+Done with first pass. Now computing net QUIPS
+####
+Finished with 635278268.492808 net QUIPs

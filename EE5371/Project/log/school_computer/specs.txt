@@ -1,0 +1,11 @@
+GPU:
+	Name: NVIDIA Grid K2
+	1. Clock: 1097MHz
+	2. FP32 : 2289 GFLOPS
+	3. FP64: 95.36 GLOPS
+CPU:
+	Name: Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz
+	1. Clock: 2.2 GHz
+RAM:
+	1. Clock: 2133 MHz
+	2. Size: 36 GB

@@ -1,0 +1,18 @@
+The file named "output.txt" generally has the basic information about the length of the test and the number of
+operations that occurred during said test. This "number of operations" is macroscopically defined. For comparisons
+between architectures, we avoid delving into the number of cores, but understand that the OS may optimize
+so they are minimally included. However, this code is not threaded so it should not be running on more than one core
+at a time anyways. We choose to ignore memory accesses, so cache and hard disk do NOT matter, as the data for the
+manipulation (unrealistically) is created at run time. A future implementation would also test the memory bandwidth
+and this would show favorably on say, euler angles who require less space. Anyways, as a pure performance measure
+defined by computational speed, and to devise a linear relationship, we examined closest the CPU and GPU of each device
+namely:
+
+CPU
+	Name:
+	1. Clock Speed
+GPU
+	Name:
+	1. Core Speed (CLOCK)
+	2. FP32
+	3. FP64

@@ -1,0 +1,11 @@
+GPU:
+	Name: NVIDIA GeForce GTX 960M
+	1. Clock: 1097MHz
+	2. FP32 : 1505 GFLOPS
+	3. FP64: 47.04 GLOPS
+CPU:
+	Name: Intel Core i7-6700HQ CPU 2.6GHz
+	1. Clock: 2.6GHz
+Ram:
+	1. Clock: 2133 MHz
+	2. Size: 8 GB

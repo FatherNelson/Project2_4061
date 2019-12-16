@@ -1,0 +1,11 @@
+GPU:
+	Name: Intel GMA 950
+	1. Clock: 166MHz
+	2. FP32 : 3789 GFLOPS
+	3. FP64: 947.2 GLOPS
+CPU:
+	Name: Intel® Core™ i7 2670QM
+	1. Clock: 2.2GHz
+RAM:
+	1. Clock: 1333 MHz
+	2. Size: 8 GB

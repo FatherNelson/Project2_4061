@@ -1,0 +1,11 @@
+GPU:
+	Name: ASUS HD7970 Series
+	1. Clock: 925MHz
+	2. FP32 : 3789 GFLOPS
+	3. FP64: 947.2 GLOPS
+CPU:
+	Name: Intel Core i7-3930K CPU 3.2GHz
+	1. Clock: 3.2GHz
+RAM:
+	1. Clock: 1333 MHz
+	2. Size: 32 GB

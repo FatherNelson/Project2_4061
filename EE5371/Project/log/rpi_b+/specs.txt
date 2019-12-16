@@ -1,0 +1,12 @@
+GPU SITE: https://raspberry-projects.com/pi/pi-hardware/raspberry-pi-model-b-plus/model-b-hardware-general-specifications
+GPU:
+	Name: VideoCore4
+	1. Clock: 300MHz
+	2. FP32: 24 GFLOPS
+	3. FP64: 6 GFLOPS
+CPU:
+	Name: Broadcom BCM2837B0
+	1. Clock: 1.4 GHz
+RAM:
+	1. Clock: 166MHz
+	2. Size: 1GB

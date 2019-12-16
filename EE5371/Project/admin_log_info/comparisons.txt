@@ -1,0 +1,4 @@
+1. See how consistently the computations and conversions are, i.e. what we expect given that paper
+
+
+We will simply represent a given operation

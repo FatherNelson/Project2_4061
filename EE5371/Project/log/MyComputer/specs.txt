@@ -1,0 +1,12 @@
+GPU SITE: https://www.techpowerup.com/gpu-specs/iris-graphics-6100.c2627
+GPU:
+	Name: Intel Iris Graphics 6100
+	1. Clock: 300MHz
+	2. FP32: 844.8 GFLOPS
+	3. FP64: 211.2 GFLOPS
+CPU:
+	Name: 2.9GHz dual-core Intel Core i5 processor
+	1. Clock: 2.9 GHz
+RAM:
+	1. Clock: 1866MHz
+	2. Size: 16GB
